@@ -9,6 +9,7 @@ import {
   onSnapshot,
   serverTimestamp,
   setDoc,
+  Timestamp,
   updateDoc,
   type Firestore,
 } from 'firebase/firestore';
@@ -43,13 +44,31 @@ import { ROOM_TTL_MS, type FirebaseSettings } from './firebaseConfig.js';
  * escriban "Ana Rojas" chocan en el mismo documento y el segundo es
  * rechazado, sin necesidad de una comprobación aparte que podría llegar tarde.
  *
- * **Los datos de la sala caducan a la hora.** Cada documento lleva `expiresAt`.
- * El cliente descarta lo caducado al leer —efecto inmediato— y una política de
- * TTL de Firestore sobre ese campo lo borra de verdad del servidor.
+ * **Los datos de la sala caducan a la hora**, y hacen falta dos campos para
+ * conseguirlo:
+ *
+ *   · `expiresAt` es un número de milisegundos y lo usa el cliente para
+ *     descartar lo caducado nada más leerlo. Es lo que da efecto inmediato sin
+ *     depender de que el servidor haya pasado a limpiar.
+ *   · `expiresAtTs` es el mismo instante como `Timestamp`, y existe solo para
+ *     la política de TTL de Firestore, que **exige un Timestamp** y no acepta
+ *     un número. Sin este campo la sala se veía vacía a la hora pero los
+ *     documentos se quedaban en la base de datos para siempre.
  *
  * **El archivo histórico es aparte y no caduca.** Cuando un alumno completa la
  * campaña se escribe una copia en `archive/`, que solo el profesor consulta.
  */
+/**
+ * Los dos campos de caducidad que lleva todo documento de sala.
+ *
+ * Van siempre juntos: uno para el cliente y otro para la política de TTL del
+ * servidor. Se genera aquí para que no se pueda escribir uno y olvidar el otro.
+ */
+function expiryFields(now: number): { expiresAt: number; expiresAtTs: Timestamp } {
+  const at = now + ROOM_TTL_MS;
+  return { expiresAt: at, expiresAtTs: Timestamp.fromMillis(at) };
+}
+
 export class FirebaseCompetition implements ICompetition {
   readonly online = true;
 
@@ -120,7 +139,7 @@ export class FirebaseCompetition implements ICompetition {
         uid: this.auth.currentUser?.uid ?? null,
         ready: false,
         joinedAt: now,
-        expiresAt: now + ROOM_TTL_MS,
+        ...expiryFields(now),
         score: null,
         updatedAt: serverTimestamp(),
       });
@@ -128,7 +147,7 @@ export class FirebaseCompetition implements ICompetition {
       // La sala se crea sola con el primer alumno que entra.
       await setDoc(
         this.roomRef(),
-        { state: 'lobby', startedAt: null, expiresAt: now + ROOM_TTL_MS },
+        { state: 'lobby', startedAt: null, ...expiryFields(now) },
         { merge: true },
       );
 
@@ -158,7 +177,7 @@ export class FirebaseCompetition implements ICompetition {
     try {
       await updateDoc(doc(this.playersRef(), this.playerId), {
         score,
-        expiresAt: now + ROOM_TTL_MS,
+        ...expiryFields(now),
         updatedAt: serverTimestamp(),
       });
 
@@ -235,7 +254,7 @@ export class FirebaseCompetition implements ICompetition {
     const now = Date.now();
     await setDoc(
       this.roomRef(),
-      { state: 'running', startedAt: now, expiresAt: now + ROOM_TTL_MS },
+      { state: 'running', startedAt: now, ...expiryFields(now) },
       { merge: true },
     );
   }
@@ -248,7 +267,7 @@ export class FirebaseCompetition implements ICompetition {
     await Promise.all(players.docs.map((d) => deleteDoc(d.ref)));
     await setDoc(
       this.roomRef(),
-      { state: 'lobby', startedAt: null, expiresAt: now + ROOM_TTL_MS },
+      { state: 'lobby', startedAt: null, ...expiryFields(now) },
       { merge: true },
     );
   }

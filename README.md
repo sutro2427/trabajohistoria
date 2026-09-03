@@ -125,11 +125,21 @@ Sin esto el juego funciona igual, pero cada alumno ve solo su progreso.
 2. **Firestore Database** → Crear base de datos → modo producción.
 3. **Reglas** → pega el contenido de [`firestore.rules`](./firestore.rules) → Publicar.
 4. **Authentication** → Sign-in method → activa **Anónimo**.
-5. ⚙ Configuración del proyecto → Tus aplicaciones → Web → copia la configuración.
-6. En Netlify, **Site settings → Environment variables**, añade las variables de [`.env.example`](./.env.example).
-7. Vuelve a desplegar.
+5. **Authentication → Settings → Dominios autorizados** → añade el dominio de Netlify
+   (`tu-sitio.netlify.app`). Sin esto el login anónimo falla desde el sitio publicado
+   y el juego cae a modo local sin decir nada.
+6. ⚙ Configuración del proyecto → Tus aplicaciones → Web → copia la configuración.
+7. En Netlify, **Site settings → Environment variables**, añade las variables de [`.env.example`](./.env.example).
+8. Vuelve a desplegar.
 
-Para que los datos se borren solos en el servidor: **Firestore → TTL → Crear política** sobre el campo `expiresAt` en las colecciones `rooms` y `rooms/{id}/players`. El cliente ya ignora lo caducado, así que esto es la limpieza de fondo.
+Para que los datos se borren solos en el servidor: **Firestore → TTL → Crear política**
+sobre el campo **`expiresAtTs`** en `rooms` y en `rooms/{roomId}/players`.
+
+Ojo con el nombre del campo: hay dos, y no son intercambiables. `expiresAt` es un
+número de milisegundos y lo usa el cliente para ignorar lo caducado al instante;
+`expiresAtTs` es el mismo momento como `Timestamp`, y es el único que acepta la
+política de TTL de Firestore. Apuntar la política a `expiresAt` la deja sin efecto:
+la sala se vería vacía a la hora, pero los documentos se quedarían para siempre.
 
 ---
 
