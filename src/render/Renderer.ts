@@ -222,7 +222,7 @@ export class Renderer {
     // (con un ligero escalonado) en lugar de por su borde superior: así, midan
     // lo que midan, siempre cierran contra el terreno y nunca dejan un hueco
     // por el que se vea el fondo vacío.
-    this.drawStripAnchoredToGround(bg['hills'], cam, 0.2, -34);
+    this.drawStripAnchoredToGround(bg['hills'], cam, 0.2, -42);
     this.drawStripAnchoredToGround(bg['canopyFar'], cam, 0.45, -14);
     this.drawStripAnchoredToGround(bg['canopyNear'], cam, 0.7, 0);
 

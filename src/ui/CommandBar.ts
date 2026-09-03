@@ -140,8 +140,10 @@ export class CommandBar {
       button.id = `btn-buy-${defId}`;
       button.dataset['testid'] = `btn-buy-${defId}`;
       button.title = `${def.name} — ${def.cost} suministros, ${def.population} de población`;
+      // El nombre corto evita que cinco botones se solapen en un teléfono;
+      // el completo queda en el `title` para quien pase el ratón por encima.
       button.innerHTML =
-        `<span class="btn-name">${def.name}</span>` +
+        `<span class="btn-name">${def.shortName ?? def.name}</span>` +
         `<span class="btn-cost"><span class="icon icon-supply" aria-hidden="true"></span>${def.cost}</span>`;
       this.listen(button, 'click', () => this.handlers.onTrain(defId));
       this.productionRoot.append(button);
@@ -159,7 +161,7 @@ export class CommandBar {
       button.title = `${def.name} — ${def.cost} suministros`;
       button.innerHTML =
         `<span class="cooldown-veil"></span>` +
-        `<span class="btn-name">${def.name}</span>` +
+        `<span class="btn-name">${def.shortName ?? def.name}</span>` +
         `<span class="btn-cost"><span class="icon icon-supply" aria-hidden="true"></span>${def.cost}</span>`;
       this.listen(button, 'click', () => this.arm(powerId));
       this.powersRoot.append(button);

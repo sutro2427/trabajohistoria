@@ -28,6 +28,16 @@ export class ScoreBoard {
   /** Botones que solo ve el profesor. */
   private adminButtons: HTMLButtonElement[] = [];
 
+  /**
+   * Último estado conocido de la sala.
+   *
+   * Se guarda porque el panel se pinta cuando llega un cambio, pero se abre
+   * cuando el jugador pulsa el botón — dos momentos distintos. Sin recordarlo,
+   * abrir el panel entre dos cambios lo mostraba vacío.
+   */
+  private lastSnapshot: LobbySnapshot = { state: 'lobby', startedAt: null, participants: [] };
+  private lastOnline = false;
+
   constructor(private myName: string = '') {
     this.root = requireElement('board-screen');
     this.list = requireElement('board-list');
@@ -50,6 +60,8 @@ export class ScoreBoard {
   }
 
   show(): void {
+    // Se repinta con lo último que se sabe de la sala antes de mostrarlo.
+    this.render(this.lastSnapshot, this.lastOnline);
     this.root.hidden = false;
   }
 
@@ -94,6 +106,9 @@ export class ScoreBoard {
 
   /** Pinta la tabla a partir del estado de la sala. */
   render(snapshot: LobbySnapshot, online: boolean): void {
+    this.lastSnapshot = snapshot;
+    this.lastOnline = online;
+
     const entries: ScoreEntry[] = snapshot.participants
       .map((p) => p.score)
       .filter((s): s is ScoreEntry => s !== null);

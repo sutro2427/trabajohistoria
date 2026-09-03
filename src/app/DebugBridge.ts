@@ -57,6 +57,8 @@ export interface DebugApi {
   train(defId: string): void;
   /** Lanza un poder en una coordenada del mundo. */
   launchPower(powerId: string, worldX: number): void;
+  /** Fija los suministros del jugador. Solo para pruebas automatizadas. */
+  setSupplies(amount: number): void;
 }
 
 declare global {
@@ -144,6 +146,23 @@ export function installDebugBridge(game: Game): void {
     /** Lanza un poder en una coordenada del mundo. */
     launchPower(powerId: string, worldX: number): void {
       game.getSession().launchPower(powerId, worldX);
+    },
+
+    /**
+     * Fija los suministros del jugador.
+     *
+     * Existe para que un test pueda verificar comportamientos que exigen una
+     * economía concreta —el bombardeo cuesta 30— sin tener que jugar dos
+     * minutos hasta reunirlos.
+     */
+    setSupplies(amount: number): void {
+      const team = game.getSession().world.teams.US;
+      team.supplies = Math.max(0, amount);
+      game.getSession().world.bus.emit('supplies:changed', {
+        team: 'US',
+        value: team.supplies,
+        delta: 0,
+      });
     },
   };
 

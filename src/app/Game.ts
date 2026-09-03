@@ -151,7 +151,10 @@ export class Game {
   private onLobbyChange(snapshot: LobbySnapshot): void {
     this.snapshot = snapshot;
     if (this.lobby.visible) this.lobby.render(snapshot, this.competition.online);
-    if (this.board.visible) this.board.render(snapshot, this.competition.online);
+    // El panel se refresca SIEMPRE, no solo si está abierto: pintar unas
+    // pocas filas de DOM es gratis, y así al pulsar el botón ya está al día.
+    // Condicionarlo a que fuera visible dejaba el panel vacío la primera vez.
+    this.board.render(snapshot, this.competition.online);
 
     // La salida la da el profesor y arranca a todos a la vez.
     if (snapshot.state === 'running' && !this.started && this.run !== null) {

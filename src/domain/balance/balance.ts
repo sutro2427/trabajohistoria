@@ -182,6 +182,7 @@ export const UNITS: Readonly<Record<string, UnitDef>> = Object.freeze({
   us_harvester: Object.freeze({
     id: 'us_harvester',
     name: 'Recolector',
+    shortName: 'Recolec.',
     team: 'US',
     role: 'harvester',
     hp: 60,
@@ -248,6 +249,7 @@ export const UNITS: Readonly<Record<string, UnitDef>> = Object.freeze({
   us_sniper: Object.freeze({
     id: 'us_sniper',
     name: 'Francotirador',
+    shortName: 'Tirador',
     team: 'US',
     role: 'marksman',
     hp: 70,
@@ -309,6 +311,7 @@ export const UNITS: Readonly<Record<string, UnitDef>> = Object.freeze({
   us_tank: Object.freeze({
     id: 'us_tank',
     name: 'Tanque M48',
+    shortName: 'Tanque',
     team: 'US',
     role: 'vehicle',
     hp: 400,
@@ -484,6 +487,7 @@ export const POWERS: Readonly<Record<string, PowerDef>> = Object.freeze({
   us_cluster_bomb: Object.freeze({
     id: 'us_cluster_bomb',
     name: 'Bombas de Racimo',
+    shortName: 'Bombas',
     team: 'US',
     cost: 30,
     /**

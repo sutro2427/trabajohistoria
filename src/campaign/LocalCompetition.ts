@@ -29,7 +29,7 @@ export class LocalCompetition implements ICompetition {
 
   async join(name: string): Promise<{ ok: true; id: string } | { ok: false; reason: string }> {
     const id = nameKey(name);
-    this.self = { id, name, ready: false, joinedAt: Date.now(), score: null };
+    this.self = { id, name, ready: true, joinedAt: Date.now(), score: null };
     this.emit();
     return { ok: true, id };
   }

@@ -45,6 +45,14 @@ export interface UnitDef {
   readonly id: string;
   /** Nombre mostrado en la interfaz, en español. */
   readonly name: string;
+  /**
+   * Nombre corto para el botón de compra.
+   *
+   * En el nivel 3 hay cinco botones de producción más los de apoyo y órdenes,
+   * y en la pantalla de un teléfono los nombres completos se solapan unos con
+   * otros. Si se omite, se usa `name`.
+   */
+  readonly shortName?: string;
   readonly team: TeamId;
   readonly role: UnitRole;
 
@@ -124,6 +132,8 @@ export interface UnitDef {
 export interface PowerDef {
   readonly id: string;
   readonly name: string;
+  /** Nombre corto para el botón. Si se omite, se usa `name`. */
+  readonly shortName?: string;
   readonly team: TeamId;
   /** Coste en suministros. */
   readonly cost: number;

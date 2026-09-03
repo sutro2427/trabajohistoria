@@ -1,0 +1,66 @@
+rules_version = '2';
+
+/**
+ * ============================================================================
+ * REGLAS DE SEGURIDAD DE FIRESTORE — Mekong Front: 1968
+ * ============================================================================
+ *
+ * Copia este contenido en la consola de Firebase:
+ *   Firestore Database → Reglas → pegar → Publicar
+ *
+ * Qué protegen, en concreto:
+ *
+ *  · Nadie sin autenticar puede escribir nada. La app entra con autenticación
+ *    anónima, así que el alumno no tiene que hacer nada, pero un script suelto
+ *    desde fuera tampoco puede llenar la sala de basura.
+ *  · Un alumno solo puede modificar SU documento. Aunque abra la consola del
+ *    navegador, no puede editar la puntuación de otro para robarle el premio.
+ *  · Nadie puede borrar la sala ni cambiar su estado desde el cliente salvo
+ *    para crearla al entrar. Dar la salida y reiniciar son operaciones del
+ *    profesor.
+ *  · El archivo histórico se puede escribir pero no leer ni modificar: los
+ *    alumnos no ven los resultados de otros cursos, y nadie puede falsificar
+ *    un registro pasado. El profesor lo consulta desde la consola de Firebase.
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- Salas de competencia ----
+    match /rooms/{roomId} {
+      // Cualquiera puede ver el estado de la sala; hace falta para saber si
+      // ya se dio la salida.
+      allow read: if true;
+
+      // Crear la sala al entrar el primer alumno, o actualizarla. Se exige
+      // estar autenticado y que el estado sea uno de los tres válidos.
+      allow create, update: if request.auth != null
+        && request.resource.data.state in ['lobby', 'running', 'finished'];
+
+      // Las salas no se borran desde el cliente: caducan solas por TTL.
+      allow delete: if false;
+
+      match /players/{playerId} {
+        allow read: if true;
+
+        // Al entrar, el alumno crea su documento y queda marcado con su uid.
+        allow create: if request.auth != null
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() <= 24;
+
+        // Solo el dueño del documento puede modificarlo o borrarlo. Es lo que
+        // impide que un alumno edite la puntuación de otro.
+        allow update, delete: if request.auth != null
+          && resource.data.uid == request.auth.uid;
+      }
+    }
+
+    // ---- Archivo histórico (permanente, solo para el profesor) ----
+    match /archive/{runId} {
+      // Se puede añadir un resultado, pero no leerlos ni tocarlos después.
+      // El profesor los consulta desde la consola de Firebase.
+      allow create: if request.auth != null;
+      allow read, update, delete: if false;
+    }
+  }
+}

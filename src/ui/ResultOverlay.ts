@@ -108,7 +108,9 @@ export class ResultOverlay {
       button.dataset['testid'] = 'overlay-secondary';
       button.textContent = content.secondaryLabel;
       button.addEventListener('click', () => this.onSecondary?.());
-      this.action.insertAdjacentElement('afterend', button);
+      // Se cuelga del mismo contenedor que el botón principal para que los dos
+      // queden en una fila; suelto en el panel caía descolgado a un lado.
+      this.action.parentElement?.insertBefore(button, this.action.nextSibling);
       this.secondaryButton = button;
     }
 

@@ -67,9 +67,15 @@
           <div class="bar-section">
             <span class="bar-label">Órdenes</span>
             <div class="bar-buttons">
-              <button type="button" class="btn btn-order" id="btn-attack" data-testid="btn-attack">Atacar</button>
-              <button type="button" class="btn btn-order is-active" id="btn-defend" data-testid="btn-defend">Defender</button>
-              <button type="button" class="btn btn-order" id="btn-retreat" data-testid="btn-retreat">Retirarse</button>
+<button type="button" class="btn btn-order" id="btn-attack" data-testid="btn-attack" title="Atacar (A)">
+                <span class="btn-word">Atacar</span><span class="btn-glyph" aria-hidden="true">▶▶</span>
+              </button>
+              <button type="button" class="btn btn-order is-active" id="btn-defend" data-testid="btn-defend" title="Defender (D)">
+                <span class="btn-word">Defender</span><span class="btn-glyph" aria-hidden="true">▮</span>
+              </button>
+              <button type="button" class="btn btn-order" id="btn-retreat" data-testid="btn-retreat" title="Retirarse (R)">
+                <span class="btn-word">Retirarse</span><span class="btn-glyph" aria-hidden="true">◀◀</span>
+              </button>
             </div>
           </div>
         </footer>
@@ -170,7 +176,11 @@
             <h1 id="overlay-title" data-testid="overlay-title">Mekong Front: 1968</h1>
             <p id="overlay-body" data-testid="overlay-body"></p>
             <div id="overlay-stats" class="stats"></div>
-            <button type="button" class="btn btn-primary" id="overlay-action" data-testid="overlay-action">Comenzar</button>
+<div class="panel-actions">
+              <button type="button" class="btn btn-primary" id="overlay-action" data-testid="overlay-action">
+                Comenzar
+              </button>
+            </div>
           </div>
         </div>
 

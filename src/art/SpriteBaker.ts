@@ -313,11 +313,14 @@ export function bakeArt(seed: number = ART_SEED): BakedArt {
   const bgRng = new Rng(seed + 600);
   const background = {
     sky: drawSky(480, WORLD.groundY),
-    hills: drawDistantHills(bgRng, 54),
+    hills: drawDistantHills(bgRng, 66),
     // Capas altas: la selva debe dominar el encuadre. Con capas bajas, el
     // cielo se comía media pantalla y el escenario no se leía como jungla.
-    canopyFar: drawJungleCanopy(bgRng, 112, 0.25),
-    canopyNear: drawJungleCanopy(bgRng, 128, 0.7),
+    // Capas altas: en un teléfono en horizontal la acción ocupa una franja
+    // estrecha, y un cielo que se come media pantalla la hace parecer aún más
+    // pequeña. La selva sube para enmarcar el combate.
+    canopyFar: drawJungleCanopy(bgRng, 138, 0.25),
+    canopyNear: drawJungleCanopy(bgRng, 158, 0.7),
     foreground: drawForeground(bgRng, 52),
     ground: drawGround(bgRng, WORLD.logicalHeight - WORLD.groundY),
   };

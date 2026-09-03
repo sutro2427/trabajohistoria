@@ -520,8 +520,9 @@ html, body {
    -------------------------------------------------------------------------- */
 @media (pointer: coarse) {
   .btn {
+    /* 44 px es el mínimo recomendado para un objetivo táctil. El ancho lo
+       marca el contenido, con ese suelo por si el nombre es muy corto. */
     min-height: 44px;
-    min-width: 56px;
     padding: 0.35em 0.75em;
   }
 
@@ -980,4 +981,180 @@ html, body {
   font-size: clamp(10px, 1.5vw, 14px);
   line-height: 1.6;
   text-align: left;
+}
+
+/* --------------------------------------------------------------------------
+   Barra de mando con muchos botones (nivel 3)
+   En el nivel final hay cinco botones de producción, uno de apoyo y tres de
+   órdenes. Sin estas reglas los nombres se solapan y el último se sale de la
+   pantalla en un teléfono.
+   -------------------------------------------------------------------------- */
+
+#command-bar {
+  gap: clamp(4px, 0.9vw, 12px);
+}
+
+.btn-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn {
+  /* El botón se dimensiona a su contenido y no se encoge por debajo de él:
+     truncar "Soldado" a "Solda…" habiendo espacio libre en la barra es peor
+     que dejar que la barra ocupe unos píxeles más. */
+  flex: 0 0 auto;
+  min-width: max-content;
+}
+
+.bar-section {
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+/* La ranura de entrenamiento es la primera en ceder espacio: es informativa,
+   no interactiva, y su información ya está en el botón deshabilitado. */
+.bar-queue {
+  flex-shrink: 3;
+}
+
+@media (max-width: 900px), (pointer: coarse) {
+  .btn {
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+  }
+
+  .bar-label {
+    font-size: 0.65em;
+  }
+}
+
+/* Por debajo de este ancho la ranura de entrenamiento estorba más que ayuda. */
+@media (max-width: 780px) {
+  .bar-queue {
+    display: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Órdenes: texto en pantallas anchas, símbolo en las estrechas
+   En el nivel 3 hay nueve botones en la barra. En un teléfono de 750 px no
+   caben con sus nombres completos, así que las órdenes —que el jugador ya
+   conoce por posición y color— se reducen a un símbolo y liberan ~90 px.
+   -------------------------------------------------------------------------- */
+
+.btn-glyph {
+  display: none;
+  font-size: 1.15em;
+  line-height: 1;
+  letter-spacing: -0.08em;
+}
+
+@media (max-width: 860px) {
+  .btn-order .btn-word {
+    display: none;
+  }
+
+  .btn-order .btn-glyph {
+    display: inline-block;
+  }
+
+  .btn-order {
+    min-width: 46px;
+  }
+
+  /* Con menos espacio, los nombres de producción sí pueden recortarse. */
+  .btn-buy,
+  .btn-power {
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+
+  .btn-buy .btn-name,
+  .btn-power .btn-name {
+    max-width: 5.5em;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Paneles superpuestos en pantallas bajas
+   En un teléfono en horizontal hay unos 340 px de alto. El resumen de fin de
+   campaña —cuatro tarjetas, moraleja y dos botones— no cabe, y se salía por
+   arriba dejando el título cortado.
+   -------------------------------------------------------------------------- */
+
+.panel {
+  max-height: 92dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+/* El botón principal deja de centrarse por sí mismo: lo hace el contenedor. */
+.panel-actions .btn-primary {
+  margin: 0;
+}
+
+@media (max-height: 460px) {
+  .panel {
+    padding: 10px 14px;
+  }
+
+  .panel h1 {
+    font-size: clamp(14px, 3vw, 20px);
+    margin-bottom: 0.3em;
+  }
+
+  .panel p {
+    margin-bottom: 0.6em;
+  }
+
+  /* El resumen pasa a una sola fila de tarjetas compactas. */
+  .summary {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+    margin-bottom: 0.7em;
+  }
+
+  .summary-card {
+    padding: 0.35em 0.2em;
+  }
+
+  .summary-value {
+    font-size: 15px;
+  }
+
+  .summary-label {
+    font-size: 8px;
+    letter-spacing: 0;
+  }
+
+  .moral {
+    padding: 0.5em 0.7em;
+    margin-bottom: 0.7em;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .stats {
+    margin-bottom: 0.7em;
+    gap: 0.4em;
+  }
+
+  .board {
+    max-height: 40dvh;
+  }
+
+  .roster {
+    max-height: 26dvh;
+  }
 }

@@ -117,11 +117,18 @@ export function summarize(run: CampaignRun): ManagementSummary {
   const losses = run.results.reduce((a, r) => a + r.losses, 0);
   const spentOnPowers = run.results.reduce((a, r) => a + r.spentOnPowers, 0);
 
+  // El sobrante no puede superar lo recolectado: si lo hace, es que hubo
+  // ingresos que no pasaron por la recolección (el botín del nivel anterior,
+  // o un ajuste de las herramientas de prueba). Acotarlo evita que la pantalla
+  // final muestre disparates como "-64 % de eficiencia" o "164 % sin usar",
+  // que además arruinarían el mensaje de cierre justo cuando más se lee.
+  const usable = Math.max(harvested, leftover);
+  const efficiency = usable > 0 ? Math.round(((usable - leftover) / usable) * 100) : 0;
+
   return {
     harvested,
     leftover,
-    // Si no recolectó nada la eficiencia es 0, no una división por cero.
-    efficiency: harvested > 0 ? Math.round(((harvested - leftover) / harvested) * 100) : 0,
+    efficiency: Math.max(0, Math.min(100, efficiency)),
     kills,
     losses,
     exchangeRatio: losses > 0 ? Math.round((kills / losses) * 10) / 10 : kills,
