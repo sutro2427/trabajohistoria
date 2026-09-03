@@ -113,6 +113,20 @@ export const VC_HARVESTER_PALETTE: SoldierPalette = Object.freeze({
   accent: PALETTE.mud,
 });
 
+/**
+ * Francotirador estadounidense: uniforme algo más oscuro y apagado que el del
+ * soldado regular, coherente con una unidad que vive de no ser vista.
+ */
+export const US_SNIPER_PALETTE: SoldierPalette = Object.freeze({
+  uniform: hex('#3f4a26'),
+  uniformShade: hex('#28301a'),
+  skin: PALETTE.skinUs,
+  skinShade: PALETTE.skinUsShade,
+  gear: hex('#6d6440'),
+  weapon: PALETTE.gunmetal,
+  accent: PALETTE.oliveLight,
+});
+
 /** Guerrillero vietnamita: ropa oscura, sombrero cónico, más delgado. */
 export const VC_SOLDIER_PALETTE: SoldierPalette = Object.freeze({
   uniform: hex('#3d4438'),

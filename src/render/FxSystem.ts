@@ -59,7 +59,26 @@ export class FxSystem {
     bus.on('projectile:hit', ({ x, y, splashRadius }) => {
       if (splashRadius > 0) {
         this.explosion(x, y);
-        this.camera.shake(3);
+        // La sacudida escala con el radio: un obús de tanque se siente
+        // distinto de una bomba de racimo, sin necesitar un evento nuevo.
+        this.camera.shake(Math.min(6, 2 + splashRadius * 0.08));
+      }
+    });
+
+    bus.on('power:launched', ({ x, halfWidth }) => {
+      // Silbido de llegada: polvo levantándose por toda la zona antes del
+      // primer impacto. Es el aviso visual de que algo está a punto de caer.
+      for (let i = 0; i < 10; i++) {
+        this.spawn({
+          x: x + this.rng.range(-halfWidth, halfWidth),
+          y: 206,
+          vx: this.rng.range(-8, 8),
+          vy: this.rng.range(-30, -12),
+          life: this.rng.range(0.4, 0.9),
+          maxLife: 0.9,
+          kind: 'smoke',
+          size: 2,
+        });
       }
     });
 

@@ -4,6 +4,7 @@ import { WORLD } from '../balance/balance.js';
 import type { LevelDef, TeamId } from '../balance/types.js';
 import type { GameEvents } from '../events.js';
 import type { Entity, Projectile, Structure } from './Entity.js';
+import type { Strike } from './Strike.js';
 import { createResourceNodes, type ResourceNode } from './ResourceNode.js';
 import { createTeam, type Team } from './Team.js';
 
@@ -22,6 +23,8 @@ export class World {
   readonly units: Entity[] = [];
   readonly structures: Structure[] = [];
   readonly projectiles: Projectile[] = [];
+  /** Bombardeos en curso, cayendo por tandas sobre una zona. */
+  readonly strikes: Strike[] = [];
   /** Depósitos de suministros del mapa, de los dos bandos. */
   readonly nodes: ResourceNode[] = [];
   readonly teams: Readonly<Record<TeamId, Team>>;
@@ -40,7 +43,9 @@ export class World {
     // Los dos bandos arrancan con lo mismo: mismos suministros, mismo techo de
     // población, mismos costes. La única diferencia es quién da las órdenes.
     this.teams = Object.freeze({
-      US: createTeam('US', WORLD.usBaseX, level.startingSupplies, level.populationMax),
+      // Los poderes son exclusivos del jugador: la IA compite con producción,
+      // no con bombardeos, para que el nivel siga siendo legible y justo.
+      US: createTeam('US', WORLD.usBaseX, level.startingSupplies, level.populationMax, level.powers),
       VC: createTeam('VC', WORLD.vcBaseX, level.startingSupplies, level.populationMax),
     });
 
@@ -103,6 +108,7 @@ export class World {
   collectGarbage(): void {
     removeInPlace(this.units, (u) => !u.alive && u.corpseTimer <= 0);
     removeInPlace(this.projectiles, (p) => !p.alive);
+    removeInPlace(this.strikes, (s) => !s.alive);
     removeInPlace(this.structures, (s) => !s.alive);
   }
 }

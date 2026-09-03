@@ -52,6 +52,18 @@ export type GameEvents = {
   /** Se ha rechazado una compra (falta de suministros o de población). */
   'training:rejected': { team: TeamId; defId: string; reason: 'supplies' | 'population' | 'locked' };
 
+  /** Se ha lanzado un poder sobre el mapa. */
+  'power:launched': {
+    team: TeamId;
+    powerId: string;
+    x: number;
+    halfWidth: number;
+    delay: number;
+  };
+
+  /** Se ha rechazado el lanzamiento de un poder. */
+  'power:rejected': { team: TeamId; powerId: string; reason: 'supplies' | 'cooldown' };
+
   /** Una estructura ha sido destruida. */
   'structure:destroyed': { entityId: number; team: TeamId; x: number; y: number };
 

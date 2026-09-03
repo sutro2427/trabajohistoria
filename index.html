@@ -2,7 +2,16 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <!-- `viewport-fit=cover` es imprescindible para que env(safe-area-inset-*)
+         devuelva algo: sin él, en un iPhone en horizontal el notch tapa el HUD. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0b120d" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="description" content="Mekong Front: 1968 — juego de estrategia en tiempo real pixel art ambientado en la Guerra de Vietnam." />
     <title>Mekong Front: 1968</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -35,18 +44,11 @@
 
         <!-- ===== Barra de mando inferior: producción y órdenes ===== -->
         <footer id="command-bar" class="overlay">
-          <div class="bar-section">
+          <div class="bar-section bar-production">
             <span class="bar-label">Producción</span>
-            <div class="bar-buttons">
-              <button type="button" class="btn btn-buy" id="btn-buy-soldier" data-testid="btn-buy-soldier">
-                <span class="btn-name">Soldado</span>
-                <span class="btn-cost"><span class="icon icon-supply" aria-hidden="true"></span>5</span>
-              </button>
-              <button type="button" class="btn btn-buy" id="btn-buy-harvester" data-testid="btn-buy-harvester">
-                <span class="btn-name">Recolector</span>
-                <span class="btn-cost"><span class="icon icon-supply" aria-hidden="true"></span>6</span>
-              </button>
-            </div>
+            <!-- Los botones se generan según las unidades del nivel: el nivel 1
+                 solo tiene soldado y recolector; el 3 añade francotirador y tanque. -->
+            <div class="bar-buttons" id="production-buttons" data-testid="production-buttons"></div>
           </div>
 
           <div class="bar-section bar-queue">
@@ -55,6 +57,11 @@
               <div class="queue-fill" id="queue-fill"></div>
               <span class="queue-text" id="queue-text">—</span>
             </div>
+          </div>
+
+          <div class="bar-section bar-powers" id="powers-section" hidden>
+            <span class="bar-label">Apoyo</span>
+            <div class="bar-buttons" id="power-buttons" data-testid="power-buttons"></div>
           </div>
 
           <div class="bar-section">
@@ -90,6 +97,73 @@
           </div>
         </div>
 
+        <!-- ===== Acceso a la competencia: nombre y sala de espera ===== -->
+        <div id="lobby-screen" class="screen-overlay lobby" data-testid="lobby-screen" hidden>
+          <div class="panel panel-wide">
+            <h1 class="lobby-title">Mekong Front <span class="lobby-year">1968</span></h1>
+            <p class="lobby-sub" id="lobby-sub">
+              Tres operaciones. El primero en completarlas gana.
+            </p>
+
+            <!-- Paso 1: identificarse -->
+            <div id="lobby-join" class="lobby-step">
+              <label class="field-label" for="player-name">Tu nombre y apellido</label>
+              <input
+                type="text"
+                id="player-name"
+                data-testid="player-name"
+                class="field-input"
+                placeholder="Ej: Ana Rojas"
+                autocomplete="name"
+                autocapitalize="words"
+                spellcheck="false"
+                maxlength="24"
+              />
+              <p class="field-error" id="name-error" data-testid="name-error" role="alert"></p>
+              <button type="button" class="btn btn-primary" id="btn-join" data-testid="btn-join">
+                Entrar
+              </button>
+            </div>
+
+            <!-- Paso 2: esperar la salida -->
+            <div id="lobby-wait" class="lobby-step" hidden>
+              <p class="lobby-you">Preparado: <b id="lobby-name" data-testid="lobby-name"></b></p>
+              <p class="lobby-status" id="lobby-status" data-testid="lobby-status">
+                Esperando a que el profesor dé la salida…
+              </p>
+              <ul class="roster" id="roster" data-testid="roster"></ul>
+              <button type="button" class="btn btn-primary" id="btn-solo" data-testid="btn-solo">
+                Jugar ahora
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Panel de posiciones ===== -->
+        <div id="board-screen" class="screen-overlay" data-testid="board-screen" hidden>
+          <div class="panel panel-wide">
+            <h1 id="board-title">Tabla de posiciones</h1>
+            <ol class="board" id="board-list" data-testid="board-list"></ol>
+            <div class="board-actions" id="board-actions">
+              <button type="button" class="btn btn-primary" id="board-close" data-testid="board-close">
+                Volver
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Acceso rápido al panel durante la partida -->
+        <button
+          type="button"
+          id="btn-board"
+          class="board-toggle"
+          data-testid="btn-board"
+          title="Ver posiciones"
+          hidden
+        >
+          🏆
+        </button>
+
         <!-- ===== Capa de mensajes: victoria y derrota ===== -->
         <div id="overlay-screen" class="screen-overlay" data-testid="overlay-screen" hidden>
           <div class="panel">
@@ -100,7 +174,23 @@
           </div>
         </div>
 
+        <!-- Modo de puntería: cubre el campo para que el toque elija el objetivo. -->
+        <div id="aim-layer" class="aim-layer" data-testid="aim-layer" hidden>
+          <div class="aim-hint" id="aim-hint">Toca el mapa para bombardear</div>
+          <button type="button" class="aim-cancel" id="aim-cancel" data-testid="aim-cancel">
+            Cancelar
+          </button>
+        </div>
+
         <div id="toast" class="toast" data-testid="toast" hidden></div>
+      </div>
+
+      <!-- Aviso de orientación: en vertical el campo 16:9 sería una franja
+           ilegible, así que se pide girar el teléfono antes de jugar. -->
+      <div id="rotate-notice" class="rotate-notice" data-testid="rotate-notice" aria-hidden="true">
+        <div class="rotate-icon" aria-hidden="true"></div>
+        <p><strong>Gira el teléfono</strong></p>
+        <p class="rotate-sub">Este juego se juega en horizontal</p>
       </div>
     </div>
 

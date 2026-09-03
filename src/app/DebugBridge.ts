@@ -1,5 +1,4 @@
 import type { Stance } from '../domain/balance/types.js';
-import { isDifficultyId, type DifficultyId } from '../domain/balance/difficulty.js';
 import type { Game } from './Game.js';
 
 /**
@@ -21,8 +20,11 @@ export interface DebugState {
   population: number;
   populationMax: number;
   stance: Stance;
-  difficulty: DifficultyId;
   elapsed: number;
+  /** Nivel de campaña en curso (1..3). */
+  level: number;
+  /** Niveles ya completados en este intento de campaña. */
+  levelsDone: number;
   fps: number;
   interactive: boolean;
   units: { id: number; defId: string; team: string; x: number; hp: number; state: string }[];
@@ -49,8 +51,12 @@ export interface DebugApi {
   getState(): DebugState;
   issue(command: DebugCommand): void;
   setTimeScale(scale: number): void;
-  /** Marca una dificultad en el menu sin tener que pulsar el boton. */
-  setDifficulty(id: string): void;
+  /** Salta a un nivel de campaña sin jugar los anteriores. */
+  jumpToLevel(levelId: number): void;
+  /** Compra cualquier unidad por su identificador del catálogo. */
+  train(defId: string): void;
+  /** Lanza un poder en una coordenada del mundo. */
+  launchPower(powerId: string, worldX: number): void;
 }
 
 declare global {
@@ -71,8 +77,9 @@ export function installDebugBridge(game: Game): void {
         population: team.population,
         populationMax: team.populationMax,
         stance: team.stance,
-        difficulty: game.getDifficulty(),
         elapsed: world.elapsed,
+        level: game.getLevelId(),
+        levelsDone: game.getRun()?.results.length ?? 0,
         fps: Math.round(game.getFps()),
         interactive: game.isInteractive(),
         units: world.units
@@ -112,8 +119,8 @@ export function installDebugBridge(game: Game): void {
         case 'attack': session.setStance('attack'); break;
         case 'defend': session.setStance('defend'); break;
         case 'retreat': session.setStance('retreat'); break;
-        case 'skip_briefing': game.skipMenu(); break;
-        case 'restart': game.restart(); break;
+        case 'skip_briefing': game.skipToBattle(); break;
+        case 'restart': game.skipToBattle(); break;
       }
     },
 
@@ -121,11 +128,22 @@ export function installDebugBridge(game: Game): void {
       game.setTimeScale(scale);
     },
 
-    setDifficulty(id: string): void {
-      if (!isDifficultyId(id)) {
-        throw new Error(`Dificultad desconocida: "${id}"`);
-      }
-      game.selectDifficulty(id);
+    /**
+     * Salta a un nivel concreto sin jugar los anteriores.
+     * Es lo que permite que un test verifique el nivel 3 en segundos.
+     */
+    jumpToLevel(levelId: number): void {
+      game.jumpToLevel(levelId);
+    },
+
+    /** Compra cualquier unidad por su identificador del catálogo. */
+    train(defId: string): void {
+      game.getSession().trainUnit(defId);
+    },
+
+    /** Lanza un poder en una coordenada del mundo. */
+    launchPower(powerId: string, worldX: number): void {
+      game.getSession().launchPower(powerId, worldX);
     },
   };
 

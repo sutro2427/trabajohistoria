@@ -1,8 +1,9 @@
 import { getLevel } from './balance/levels.js';
-import { getAiProfile, type DifficultyId } from './balance/difficulty.js';
-import { getStructureDef, getUnitDef, UNITS, WORLD } from './balance/balance.js';
+import { getAiProfile, isDifficultyId, type DifficultyId } from './balance/difficulty.js';
+import { getPowerDef, getStructureDef, getUnitDef, UNITS, WORLD } from './balance/balance.js';
 import type { LevelDef, Stance, UnitDef } from './balance/types.js';
 import { CommandQueue } from './commands/ICommand.js';
+import { LaunchPowerCommand } from './commands/LaunchPowerCommand.js';
 import { SetStanceCommand } from './commands/SetStanceCommand.js';
 import { TrainUnitCommand } from './commands/TrainUnitCommand.js';
 import { StructureFactory, UnitFactory } from './factories/UnitFactory.js';
@@ -16,8 +17,10 @@ import { DamageSystem } from './systems/DamageSystem.js';
 import { MovementSystem } from './systems/MovementSystem.js';
 import { ProjectileSystem } from './systems/ProjectileSystem.js';
 import { StateMachineSystem } from './systems/StateMachineSystem.js';
+import { StrikeSystem } from './systems/StrikeSystem.js';
 import { TrainingSystem } from './systems/TrainingSystem.js';
 import { VictorySystem } from './systems/VictorySystem.js';
+import type { PowerState } from './world/Strike.js';
 import { World } from './world/World.js';
 
 /**
@@ -49,10 +52,13 @@ export class GameSession {
     seed: number,
     blueprintUnlocked = false,
     startingBonus = 0,
-    difficulty: DifficultyId = 'normal',
+    difficulty?: DifficultyId,
   ) {
     this.level = getLevel(levelId);
-    this.difficulty = difficulty;
+    // La dificultad la fija el NIVEL, no el jugador: así todos los alumnos
+    // compiten bajo las mismas condiciones y el ranking es comparable.
+    // El parámetro explícito existe solo para los tests de balance.
+    this.difficulty = difficulty ?? resolveDifficulty(this.level.difficulty);
     this.blueprintUnlocked = blueprintUnlocked;
     this.world = new World(this.level, seed);
     this.world.teams.US.supplies += startingBonus;
@@ -71,7 +77,7 @@ export class GameSession {
     // La IA recibe la misma cola de entrenamiento que el jugador. Es lo que
     // garantiza que no pueda producir nada que no haya pagado.
     const ai = new EconomicAiStrategy(
-      getAiProfile(difficulty),
+      getAiProfile(this.difficulty),
       pickByRole(this.level.enemyBuildable, 'harvester'),
       pickByRole(this.level.enemyBuildable, 'infantry'),
     );
@@ -84,6 +90,7 @@ export class GameSession {
       new AnimationSystem(),
       new CombatSystem(getUnitDef),
       new ProjectileSystem(getUnitDef, damage),
+      new StrikeSystem(getUnitDef, damage),
       damage,
       new VictorySystem(cheapest),
     ];
@@ -126,6 +133,32 @@ export class GameSession {
   /** Coste de una unidad, para pintarlo en los botones. */
   costOf(defId: string): number {
     return getUnitDef(defId).cost;
+  }
+
+  /**
+   * Lanza un poder sobre un punto del mapa.
+   *
+   * @param worldX Coordenada del mundo (no de pantalla) donde caerá la andanada.
+   */
+  launchPower(powerId: string, worldX: number): void {
+    this.simulation.issue(new LaunchPowerCommand('US', powerId, worldX));
+  }
+
+  /** Poderes disponibles en este nivel. */
+  get powers(): readonly string[] {
+    return this.level.powers;
+  }
+
+  /** Estado de un poder del jugador (enfriamiento y usos), si existe. */
+  powerState(powerId: string): PowerState | undefined {
+    return this.world.teams.US.powers.find((p) => p.defId === powerId);
+  }
+
+  /** `true` si el poder puede lanzarse ahora mismo. */
+  canLaunch(powerId: string): boolean {
+    const state = this.powerState(powerId);
+    if (!state || state.cooldown > 0) return false;
+    return this.world.teams.US.supplies >= getPowerDef(powerId).cost;
   }
 
   /** Unidades producibles en este nivel. */
@@ -175,4 +208,15 @@ function pickByRole(ids: readonly string[], role: UnitDef['role']): string {
     throw new Error(`El nivel no define ninguna unidad enemiga con rol "${role}"`);
   }
   return found;
+}
+
+/**
+ * Traduce la dificultad declarada por un nivel a un identificador válido.
+ *
+ * Un nivel guarda su dificultad como texto para que `levels.ts` no dependa del
+ * módulo de dificultad; si el texto no fuese válido se cae a 'normal' en lugar
+ * de reventar la partida, que es el fallo menos dañino posible aquí.
+ */
+function resolveDifficulty(value: string): DifficultyId {
+  return isDifficultyId(value) ? value : 'normal';
 }

@@ -1,4 +1,4 @@
-import type { StructureDef, UnitDef } from './types.js';
+import type { PowerDef, StructureDef, UnitDef } from './types.js';
 
 /**
  * ============================================================================
@@ -222,24 +222,108 @@ export const UNITS: Readonly<Record<string, UnitDef>> = Object.freeze({
     }),
   }),
 
+  /**
+   * Francotirador estadounidense.
+   *
+   * Su función es cambiar la forma de la batalla, no ganarla sola. Los números
+   * están elegidos para que sea un problema *posicional*:
+   *
+   *   · Alcance 150 px contra los 90 del soldado: dispara desde mucho más
+   *     lejos, así que una línea con francotiradores detrás gana el
+   *     intercambio a distancia.
+   *   · 45 de daño mata a un guerrillero en dos tiros, no en nueve.
+   *   · Pero un disparo cada 2 s y 70 de vida: si la infantería enemiga le
+   *     llega encima, muere sin poder responder.
+   *
+   * De ahí la respuesta correcta del jugador: no acumular francotiradores,
+   * sino protegerlos con soldados delante.
+   *
+   * Sobre el precio: la primera versión costaba 14 y ocupaba 2 de población,
+   * y las partidas simuladas mostraron por qué estaba mal. Comprar dos valía
+   * casi seis soldados y cuatro huecos de población, así que el jugador que
+   * los usaba se quedaba con un ejército de cuatro unidades y perdía por
+   * agotamiento — el nivel 2 era invencible. A 10 y una población sigue siendo
+   * el doble que un soldado, que es decisión suficiente.
+   */
+  us_sniper: Object.freeze({
+    id: 'us_sniper',
+    name: 'Francotirador',
+    team: 'US',
+    role: 'marksman',
+    hp: 70,
+    armor: 0,
+    /**
+     * 95 de daño: mata a un guerrillero (90 de vida) de un solo disparo.
+     *
+     * Es la cifra que da sentido a la unidad. Con 45 hacía falta disparar dos
+     * veces, y a un tiro cada dos segundos eso significaba cuatro segundos por
+     * baja: menos rendimiento que un soldado que cuesta la mitad. Las partidas
+     * simuladas lo dejaron claro — comprar francotiradores hacía *perder*
+     * (0 victorias de 8, frente a 6 de 8 sin ellos). Una unidad que el juego
+     * ofrece y que empeora tus opciones es una trampa, no una decisión.
+     */
+    damage: 95,
+    fireRate: 0.5,
+    range: 150,
+    aimTime: 0.9,
+    projectileSpeed: 620,
+    spread: 1,
+    splashRadius: 0,
+    speed: 28,
+    cost: 10,
+    trainTime: 5.5,
+    population: 1,
+    flinchDuration: 0.2,
+    flinchCooldown: 1.0,
+    corpseFade: 2.5,
+    recoilPixels: 3,
+    spriteHeight: 20,
+    /**
+     * Se planta al 92 % de su alcance. Con un margen mayor pasaba media
+     * batalla retrocediendo —y retrocediendo no dispara—, así que su daño
+     * nunca llegaba a aplicarse.
+     */
+    preferredRangeFactor: 0.92,
+    hotkey: '3',
+  }),
+
+  /**
+   * Tanque M48.
+   *
+   * El coste anterior (500) era un error de calibración heredado: el mapa
+   * entero solo contiene 550 suministros por bando, así que un tanque
+   * costaba literalmente toda la partida y nadie podía construirlo nunca.
+   *
+   * A 55 suministros equivale a once soldados, y con 8 de población ocupa
+   * casi una sexta parte del ejército. Sigue siendo la compra más cara del
+   * juego —hay que renunciar a mucho— pero es alcanzable con una economía
+   * bien llevada, que es exactamente la lección que el juego quiere enseñar.
+   *
+   * Sobre su alcance (125) frente al del francotirador (150): es deliberado y
+   * es la clave del nivel 3. El blindado arrasa infantería, pero el tirador le
+   * dispara desde fuera de su alcance. Cada unidad tiene una respuesta clara,
+   * así que el nivel se gana componiendo el ejército correcto y no acumulando
+   * la unidad más cara. Con el tanque batiendo más lejos que todo lo demás, el
+   * nivel era sencillamente imposible: cero victorias de ocho.
+   */
   us_tank: Object.freeze({
     id: 'us_tank',
     name: 'Tanque M48',
     team: 'US',
     role: 'vehicle',
-    hp: 900,
-    armor: 4,
-    damage: 55,
+    hp: 400,
+    armor: 3,
+    damage: 44,
     fireRate: 0.5,
-    range: 150,
+    range: 125,
     aimTime: 0.6,
     projectileSpeed: 300,
     spread: 1,
     splashRadius: 26,
     speed: 18,
-    cost: 500,
-    trainTime: 20.0,
-    population: 4,
+    cost: 55,
+    trainTime: 16.0,
+    population: 8,
     // Un vehículo no se tambalea por un disparo de rifle.
     flinchDuration: 0,
     flinchCooldown: 999,
@@ -247,6 +331,7 @@ export const UNITS: Readonly<Record<string, UnitDef>> = Object.freeze({
     recoilPixels: 4,
     spriteHeight: 22,
     requiresBlueprint: true,
+    hotkey: '4',
   }),
 
   // ======================= BANDO VIETNAMITA =======================
@@ -313,24 +398,65 @@ export const UNITS: Readonly<Record<string, UnitDef>> = Object.freeze({
     }),
   }),
 
+  /**
+   * Tirador selecto vietnamita.
+   *
+   * Contrapartida del francotirador estadounidense: pega algo menos y tiene
+   * algo menos de alcance, pero se mueve más y cuesta lo mismo. Le da a la IA
+   * una herramienta real para castigar al jugador que avanza en línea recta.
+   */
+  vc_marksman: Object.freeze({
+    id: 'vc_marksman',
+    name: 'Tirador Selecto',
+    team: 'VC',
+    role: 'marksman',
+    hp: 66,
+    armor: 0,
+    /** Mata a un soldado estadounidense (100 de vida) en dos disparos. */
+    damage: 88,
+    fireRate: 0.5,
+    range: 142,
+    aimTime: 0.85,
+    projectileSpeed: 600,
+    spread: 2,
+    splashRadius: 0,
+    speed: 30,
+    cost: 10,
+    trainTime: 5.5,
+    population: 1,
+    flinchDuration: 0.2,
+    flinchCooldown: 1.0,
+    corpseFade: 2.5,
+    recoilPixels: 3,
+    spriteHeight: 20,
+    preferredRangeFactor: 0.92,
+  }),
+
+  /**
+   * Tanque T-54.
+   *
+   * Antes tenía `cost: 0` y `trainTime: 0`, una bomba de relojería: en cuanto
+   * entrara en la lista de compra de la IA habría podido generar tanques
+   * gratis e infinitos. Ahora paga lo mismo que el jugador por la misma cola.
+   */
   vc_tank: Object.freeze({
     id: 'vc_tank',
     name: 'Tanque T-54',
     team: 'VC',
     role: 'vehicle',
-    hp: 950,
-    armor: 4,
-    damage: 50,
+    hp: 400,
+    armor: 3,
+    damage: 42,
     fireRate: 0.5,
-    range: 145,
+    range: 122,
     aimTime: 0.6,
     projectileSpeed: 300,
     spread: 1,
     splashRadius: 26,
     speed: 16,
-    cost: 0,
-    trainTime: 0,
-    population: 4,
+    cost: 55,
+    trainTime: 16.0,
+    population: 8,
     flinchDuration: 0,
     flinchCooldown: 999,
     corpseFade: 6.0,
@@ -338,6 +464,55 @@ export const UNITS: Readonly<Record<string, UnitDef>> = Object.freeze({
     spriteHeight: 22,
   }),
 });
+
+/**
+ * ---------------------------------------------------------------------------
+ * PODERES ACTIVABLES
+ * ---------------------------------------------------------------------------
+ *
+ * Un poder no es una unidad: no ocupa población, no camina y nadie le puede
+ * disparar. Es una compra puntual que convierte suministros en daño inmediato
+ * sobre un punto que elige el jugador.
+ *
+ * Existe para tensar la decisión central del juego. Las bombas de racimo
+ * cuestan 30 suministros: exactamente seis soldados. Un jugador que las gasta
+ * mal se queda sin ejército; uno que las guarda demasiado pierde la ventana en
+ * la que habrían roto el asalto enemigo. Eso es administrar recursos y actuar
+ * a tiempo, que es el mensaje del juego.
+ */
+export const POWERS: Readonly<Record<string, PowerDef>> = Object.freeze({
+  us_cluster_bomb: Object.freeze({
+    id: 'us_cluster_bomb',
+    name: 'Bombas de Racimo',
+    team: 'US',
+    cost: 30,
+    /**
+     * Enfriamiento largo a propósito: si se pudieran encadenar, la respuesta
+     * óptima sería ignorar el ejército y bombardear, y el juego dejaría de
+     * tratar sobre gestionar tropas.
+     */
+    cooldown: 40,
+    areaHalfWidth: 46,
+    blastCount: 7,
+    damagePerBlast: 55,
+    blastRadius: 22,
+    /**
+     * Un segundo de retardo entre la orden y el primer impacto. Es lo que
+     * convierte el poder en una decisión de anticipación en vez de un botón
+     * de "matar lo que hay aquí": hay que predecir dónde estará el enemigo.
+     */
+    delay: 1.0,
+    blastInterval: 0.13,
+    hotkey: 'B',
+  }),
+});
+
+/** Acceso seguro al catálogo de poderes. */
+export function getPowerDef(id: string): PowerDef {
+  const def = POWERS[id];
+  if (!def) throw new Error(`Poder desconocido en el catálogo: "${id}"`);
+  return def;
+}
 
 /**
  * ---------------------------------------------------------------------------

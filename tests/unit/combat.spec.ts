@@ -23,9 +23,15 @@ describe('Combate', () => {
     const tank = factory.create(session.world, 'vc_tank', 500);
     const def = getUnitDef('vc_tank');
 
-    // Armadura 4: un disparo de rifle (12) debe hacer 8.
-    damage.damageUnit(session.world, tank, 12, def);
-    expect(tank.health.hp).toBe(def.hp - 8);
+    // La armadura se lee del catálogo en lugar de codificarla aquí: el test
+    // verifica la *fórmula*, no una cifra concreta de balance, y así ajustar
+    // el blindaje del tanque no rompe la prueba.
+    const rifleDamage = getUnitDef('us_rifleman').damage;
+    const expected = Math.max(COMBAT.minDamage, rifleDamage - def.armor);
+    expect(def.armor).toBeGreaterThan(0);
+
+    damage.damageUnit(session.world, tank, rifleDamage, def);
+    expect(tank.health.hp).toBe(def.hp - expected);
 
     // Un daño menor que la armadura sigue haciendo el mínimo, no cero.
     const hpBefore = tank.health.hp;

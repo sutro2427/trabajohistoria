@@ -4,11 +4,20 @@ import type { PixelBuffer } from './PixelBuffer.js';
 import { CLIPS, type AnimClip, type ClipName } from './AnimationCatalog.js';
 import {
   US_HARVESTER_PALETTE,
+  US_SNIPER_PALETTE,
   US_SOLDIER_PALETTE,
   VC_HARVESTER_PALETTE,
   VC_SOLDIER_PALETTE,
 } from './palette.js';
 import { drawSoldier, type SoldierSkin } from './recipes/SoldierRecipe.js';
+import {
+  drawTank,
+  TANK_NEUTRAL,
+  US_TANK_SKIN,
+  VC_TANK_SKIN,
+  type TankPose,
+  type TankSkin,
+} from './recipes/TankRecipe.js';
 import {
   drawSupplyDrop,
   drawUsFirebase,
@@ -112,6 +121,22 @@ const SKINS: Readonly<Record<string, SoldierSkin>> = Object.freeze({
     dirtiness: 0.75,
     build: 0.3,
   },
+  /**
+   * Francotirador estadounidense: casco cambiado por gorro de selva —los
+   * tiradores no llevan casco de acero, que estorba al apuntar—, complexión
+   * más ligera y, sobre todo, el fusil largo con mira. Ese perfil es lo que
+   * permite localizarlo dentro de una formación de un solo vistazo.
+   */
+  us_sniper: {
+    palette: US_SNIPER_PALETTE,
+    headgear: 'boonie',
+    hasBackpack: false,
+    hasWeapon: true,
+    weapon: 'sniper',
+    hasSack: false,
+    dirtiness: 0.3,
+    build: 0.35,
+  },
   vc_guerrilla: {
     palette: VC_SOLDIER_PALETTE,
     headgear: 'conical',
@@ -126,6 +151,17 @@ const SKINS: Readonly<Record<string, SoldierSkin>> = Object.freeze({
    * Conserva el sombrero cónico —es lo que identifica al bando de un vistazo—
    * y pierde el arma, que es lo que identifica al oficio.
    */
+  /** Tirador selecto vietnamita: sombrero cónico y el mismo fusil largo. */
+  vc_marksman: {
+    palette: VC_SOLDIER_PALETTE,
+    headgear: 'conical',
+    hasBackpack: false,
+    hasWeapon: true,
+    weapon: 'sniper',
+    hasSack: false,
+    dirtiness: 0.4,
+    build: 0.15,
+  },
   vc_harvester: {
     palette: VC_HARVESTER_PALETTE,
     headgear: 'conical',
@@ -140,6 +176,7 @@ const SKINS: Readonly<Record<string, SoldierSkin>> = Object.freeze({
 /** Clips que necesita cada rol. No se hornea lo que nunca se va a usar. */
 const INFANTRY_CLIPS: readonly ClipName[] = ['idle', 'walk', 'aim', 'shoot', 'hit', 'die'];
 const HARVESTER_CLIPS: readonly ClipName[] = ['idle', 'walk', 'harvest', 'carry', 'hit', 'die'];
+const VEHICLE_CLIPS: readonly ClipName[] = ['idle', 'walk', 'aim', 'shoot', 'hit', 'die'];
 
 function bakeUnit(skin: SoldierSkin, clipNames: readonly ClipName[], seed: number): BakedUnit {
   const result: Partial<Record<ClipName, BakedClip>> = {};
@@ -172,6 +209,60 @@ function bakeUnit(skin: SoldierSkin, clipNames: readonly ClipName[], seed: numbe
   return result as BakedUnit;
 }
 
+/**
+ * Hornea un vehículo.
+ *
+ * Los blindados reutilizan la misma estructura de clips que la infantería para
+ * que el resto del juego (render, animación, atlas) no tenga que distinguirlos
+ * — pero el contenido de cada clip es distinto, porque un tanque no camina ni
+ * se agacha:
+ *
+ *   · `idle`  — parado, con un leve balanceo de suspensión.
+ *   · `walk`  — cadenas rodando (cuatro fases de eslabones).
+ *   · `shoot` — retroceso del cañón.
+ *   · `die`   — el casco se hunde y queda como chatarra ardiendo.
+ *
+ * Que un vehículo y un soldado expongan la misma interfaz de clips es lo que
+ * permite que el renderer los dibuje con el mismo código.
+ */
+function bakeVehicle(skin: TankSkin, seed: number): BakedUnit {
+  const poseFor = (clip: ClipName, frame: number): TankPose => {
+    switch (clip) {
+      case 'walk':
+        return { ...TANK_NEUTRAL, trackPhase: frame, bounce: frame % 2 === 0 ? 0 : -1 };
+      case 'shoot':
+        // Retroceso fuerte en el fotograma del disparo y recuperación gradual.
+        return { ...TANK_NEUTRAL, recoil: [0, -4, -2, 0][frame] ?? 0 };
+      case 'hit':
+        return { ...TANK_NEUTRAL, bounce: 1 };
+      case 'die':
+        return { ...TANK_NEUTRAL, wreck: frame / 4, bounce: Math.min(2, frame) };
+      case 'aim':
+      case 'idle':
+      default:
+        return { ...TANK_NEUTRAL, bounce: frame % 2 === 0 ? 0 : -1 };
+    }
+  };
+
+  const result: Partial<Record<ClipName, BakedClip>> = {};
+  for (const name of VEHICLE_CLIPS) {
+    const clip = CLIPS[name];
+    const right: PixelBuffer[] = [];
+    for (let f = 0; f < clip.frames; f++) {
+      const rng = new Rng(seed + name.length * 1013 + f * 7919);
+      right.push(drawTank(poseFor(name, f), skin, rng));
+    }
+    result[name] = { clip, right, left: right.map((b) => b.mirrorX()) };
+  }
+
+  const fallback = result['idle'];
+  if (!fallback) throw new Error('bakeVehicle: falta el clip "idle"');
+  for (const name of Object.keys(CLIPS) as ClipName[]) {
+    if (!result[name]) result[name] = fallback;
+  }
+  return result as BakedUnit;
+}
+
 /** Hornea todo el arte del juego. Debe llamarse una única vez, al arrancar. */
 export function bakeArt(seed: number = ART_SEED): BakedArt {
   const started = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -181,6 +272,11 @@ export function bakeArt(seed: number = ART_SEED): BakedArt {
     us_harvester: bakeUnit(SKINS['us_harvester'] as SoldierSkin, HARVESTER_CLIPS, seed + 200),
     vc_guerrilla: bakeUnit(SKINS['vc_guerrilla'] as SoldierSkin, INFANTRY_CLIPS, seed + 300),
     vc_harvester: bakeUnit(SKINS['vc_harvester'] as SoldierSkin, HARVESTER_CLIPS, seed + 350),
+    us_sniper: bakeUnit(SKINS['us_sniper'] as SoldierSkin, INFANTRY_CLIPS, seed + 400),
+    vc_marksman: bakeUnit(SKINS['vc_marksman'] as SoldierSkin, INFANTRY_CLIPS, seed + 450),
+    // Los blindados no comparten el cuerpo humanoide: tienen su propia receta.
+    us_tank: bakeVehicle(US_TANK_SKIN, seed + 500),
+    vc_tank: bakeVehicle(VC_TANK_SKIN, seed + 550),
   };
 
   const structureRng = new Rng(seed + 400);

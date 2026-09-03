@@ -198,6 +198,7 @@ export class Renderer {
     this.drawStructures(world, cam);
     this.drawUnits(world, cam, alpha);
     this.drawProjectiles(world, cam, alpha);
+    this.drawStrikeZones(world, cam);
     this.fx.draw(ctx, cam);
     this.drawHealthBars(world, cam);
     this.drawForeground(cam);
@@ -474,6 +475,45 @@ export class Renderer {
       ctx.moveTo(Math.round(tailX) + 0.5, Math.round(tailY) + 0.5);
       ctx.lineTo(Math.round(x) + 0.5, Math.round(y) + 0.5);
       ctx.stroke();
+    }
+  }
+
+  /**
+   * Zona marcada por una andanada en camino.
+   *
+   * Se dibuja mientras las bombas están cayendo, y es información de juego, no
+   * decoración: avisa a los dos bandos de dónde va a caer el castigo, de modo
+   * que un jugador atento puede sacar a sus tropas de ahí. Sin esta marca el
+   * bombardeo sería un golpe invisible e injusto.
+   */
+  private drawStrikeZones(world: World, cam: number): void {
+    if (world.strikes.length === 0) return;
+    const ctx = this.ctx;
+
+    for (const strike of world.strikes) {
+      if (!strike.alive) continue;
+      const left = Math.round(strike.centerX - strike.halfWidth - cam);
+      const width = Math.round(strike.halfWidth * 2);
+      if (left + width < 0 || left > WORLD.logicalWidth) continue;
+
+      const top = strike.groundY - 26;
+
+      // Parpadeo mientras la andanada está en curso.
+      const pulse = 0.35 + 0.25 * Math.sin(world.elapsed * 12);
+      ctx.globalAlpha = pulse;
+      ctx.strokeStyle = `rgb(${PALETTE.muzzle.r},${PALETTE.muzzle.g},${PALETTE.muzzle.b})`;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(left + 0.5, top + 0.5, width, 26);
+
+      // Rayado diagonal: se lee como "zona batida" sin tapar a las unidades.
+      ctx.globalAlpha = pulse * 0.4;
+      ctx.beginPath();
+      for (let x = left; x < left + width; x += 6) {
+        ctx.moveTo(x + 0.5, strike.groundY + 0.5);
+        ctx.lineTo(x + 6.5, top + 0.5);
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
     }
   }
 

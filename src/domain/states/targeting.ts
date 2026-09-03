@@ -97,6 +97,33 @@ export function engageRange(def: UnitDef): number {
 }
 
 /**
+ * Distancia a la que la unidad quiere quedarse de su objetivo.
+ *
+ * La infantería no define `preferredRangeFactor` y avanza hasta el borde de su
+ * alcance: quiere estar lo más cerca posible dentro de lo que le permite el
+ * arma. El francotirador define un factor alto (~0.88), así que se planta
+ * antes y **retrocede si el enemigo se le acerca**.
+ *
+ * Esa única diferencia de comportamiento es lo que hace que el francotirador
+ * se sienta como tal en lugar de como un soldado con más daño, y es también lo
+ * que crea su debilidad: mientras retrocede no dispara.
+ */
+export function preferredRange(def: UnitDef): number {
+  return def.range * (def.preferredRangeFactor ?? 1);
+}
+
+/**
+ * ¿Debe la unidad retroceder porque el enemigo está demasiado cerca?
+ *
+ * Solo se aplica a quien tiene una distancia preferida. El margen del 25 %
+ * evita que la unidad oscile adelante y atrás en el límite exacto.
+ */
+export function shouldBackPedal(def: UnitDef, distance: number): boolean {
+  if (def.preferredRangeFactor === undefined) return false;
+  return distance < preferredRange(def) * 0.75;
+}
+
+/**
  * ¿Puede esta unidad disparar a este blanco desde aquí?
  * Exige estar en alcance y mirando hacia él.
  */

@@ -13,8 +13,17 @@ export type TeamId = 'US' | 'VC';
 /** Postura del ejército. Una sola variable produce comportamiento de escuadra. */
 export type Stance = 'attack' | 'defend' | 'retreat';
 
-/** Rol funcional de una unidad; decide qué componentes recibe al crearse. */
-export type UnitRole = 'infantry' | 'harvester' | 'vehicle';
+/**
+ * Rol funcional de una unidad; decide qué componentes recibe al crearse y
+ * cómo la busca la IA cuando compone su ejército.
+ *
+ * `marksman` (francotirador) es un rol propio y no una variante de
+ * `infantry` porque su comportamiento táctico es opuesto: la infantería
+ * quiere cerrar distancia y el francotirador quiere mantenerla. Separarlos
+ * permite que cada uno tenga su propia regla de posicionamiento sin llenar
+ * los estados de condicionales.
+ */
+export type UnitRole = 'infantry' | 'harvester' | 'vehicle' | 'marksman';
 
 /**
  * Parámetros del ciclo de recolección (solo unidades con rol `harvester`).
@@ -86,6 +95,54 @@ export interface UnitDef {
   readonly harvest?: HarvestDef;
   /** Si es `true`, requiere haber capturado los planos para poder producirse. */
   readonly requiresBlueprint?: boolean;
+  /**
+   * Distancia que la unidad intenta mantener respecto a su objetivo, como
+   * fracción de su alcance (0..1).
+   *
+   * La infantería lo deja sin definir y avanza hasta el borde del alcance.
+   * El francotirador usa un valor alto (~0.9) para quedarse atrás y disparar
+   * desde lejos: es lo que lo hace sentirse como un francotirador y no como
+   * un soldado con más daño.
+   */
+  readonly preferredRangeFactor?: number;
+  /** Tecla de atajo mostrada en el botón de compra. */
+  readonly hotkey?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Poderes: acciones puntuales que el jugador compra y lanza sobre el mapa
+// ---------------------------------------------------------------------------
+
+/**
+ * Definición de un poder activable (por ejemplo, las bombas de racimo).
+ *
+ * No es una unidad: no ocupa población, no camina y no se le puede disparar.
+ * Es una compra puntual que convierte suministros en daño inmediato en un
+ * punto elegido por el jugador. Existe precisamente para tensar la decisión
+ * económica del juego: el mismo dinero son bombas o son soldados.
+ */
+export interface PowerDef {
+  readonly id: string;
+  readonly name: string;
+  readonly team: TeamId;
+  /** Coste en suministros. */
+  readonly cost: number;
+  /** Segundos de espera antes de poder volver a usarlo. */
+  readonly cooldown: number;
+  /** Semiancho de la zona batida, en píxeles. */
+  readonly areaHalfWidth: number;
+  /** Número de explosiones que caen repartidas por la zona. */
+  readonly blastCount: number;
+  /** Daño de cada explosión. */
+  readonly damagePerBlast: number;
+  /** Radio de cada explosión concreta. */
+  readonly blastRadius: number;
+  /** Segundos entre la orden y la primera explosión (la andanada tarda en llegar). */
+  readonly delay: number;
+  /** Segundos entre explosiones sucesivas. */
+  readonly blastInterval: number;
+  /** Tecla de atajo. */
+  readonly hotkey?: string;
 }
 
 /** Definición de una estructura (base propia u objetivo enemigo). */
@@ -123,4 +180,16 @@ export interface LevelDef {
   readonly enemyStructure: string;
   /** Botín máximo que se traslada al nivel siguiente. */
   readonly maxLoot: number;
+  /** Poderes disponibles para el jugador en este nivel. */
+  readonly powers: readonly string[];
+  /**
+   * Dificultad de la IA propia del nivel.
+   *
+   * La curva de la campaña la fija el nivel, no el jugador: el nivel 1 debe
+   * ser accesible para quien nunca ha jugado y el 3 debe costar. Así la
+   * competencia de clase compara a todos bajo las mismas condiciones.
+   */
+  readonly difficulty: string;
+  /** Resumen de una línea de lo que introduce el nivel, para el menú. */
+  readonly tagline: string;
 }

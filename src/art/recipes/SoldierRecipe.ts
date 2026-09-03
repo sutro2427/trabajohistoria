@@ -76,11 +76,23 @@ export const NEUTRAL_POSE: Pose = Object.freeze({
 export type Headgear = 'helmet' | 'boonie' | 'conical';
 
 /** Aspecto de la unidad. */
+/**
+ * Arma que porta la unidad.
+ *
+ * La silueta del arma es, junto al tocado, lo que permite identificar el tipo
+ * de unidad de un vistazo a 22 píxeles de altura. El fusil de francotirador es
+ * deliberadamente mucho más largo y lleva mira y bípode: se reconoce al
+ * instante incluso en mitad de una línea de combate.
+ */
+export type WeaponKind = 'rifle' | 'sniper';
+
 export interface SoldierSkin {
   readonly palette: SoldierPalette;
   readonly headgear: Headgear;
   readonly hasBackpack: boolean;
   readonly hasWeapon: boolean;
+  /** Tipo de arma. Si se omite, fusil de asalto. */
+  readonly weapon?: WeaponKind;
   /** Si carga un saco de suministros (recolector de vuelta a la base). */
   readonly hasSack: boolean;
   /** Cuánta suciedad y desgaste se salpica sobre el uniforme. 0..1 */
@@ -120,8 +132,12 @@ export function drawSoldier(pose: Pose, skin: SoldierSkin, rng: Rng): PixelBuffe
   if (skin.hasSack) drawSack(buf, torsoY, lean);
   drawHead(buf, p, headY, lean);
   drawHeadgear(buf, p, skin.headgear, headY, lean);
-  if (skin.hasWeapon) drawRifle(buf, p, pose, torsoY, lean);
-  else drawEmptyArms(buf, p, pose, torsoY, lean);
+  if (skin.hasWeapon) {
+    if (skin.weapon === 'sniper') drawSniperRifle(buf, p, pose, torsoY, lean);
+    else drawRifle(buf, p, pose, torsoY, lean);
+  } else {
+    drawEmptyArms(buf, p, pose, torsoY, lean);
+  }
 
   finish(buf, skin, rng);
   return buf;
@@ -269,6 +285,65 @@ function drawRifle(
   buf.set(handX + 2, barrelY + 3, p.weapon);
 
   // Mano agarrando el guardamanos: se dibuja al final para que quede encima.
+  buf.set(handX, handY, p.skin);
+  buf.set(handX - 1, handY, p.skinShade);
+}
+
+/**
+ * Fusil de francotirador: cañón largo, mira telescópica y bípode.
+ *
+ * Se dibuja como una pieza distinta y no como un rifle estirado porque a esta
+ * escala la silueta lo es todo: el jugador tiene que poder distinguir a sus
+ * tiradores dentro de una formación sin fijarse, y el perfil largo con la
+ * mira encima lo consigue de inmediato.
+ */
+function drawSniperRifle(
+  buf: PixelBuffer,
+  p: SoldierPalette,
+  pose: Pose,
+  torsoY: number,
+  lean: number,
+): void {
+  const shoulderX = CX + 2 + lean;
+  const shoulderY = torsoY + 2;
+
+  const handX = shoulderX + Math.round(1 + pose.armAim * 3 + pose.recoil);
+  const handY = shoulderY + Math.round(3 - pose.armAim * 2);
+
+  // Brazo de dos píxeles, igual que en el fusil normal.
+  buf.line(shoulderX, shoulderY, handX, handY, p.uniform);
+  buf.line(shoulderX, shoulderY + 1, handX, handY + 1, p.uniformShade);
+
+  const barrelY = handY - Math.round(pose.armAim);
+  // Cañón claramente más largo que el del fusil de asalto (9 px frente a 5-8).
+  const barrelLen = 9 + Math.round(pose.armAim * 2);
+  const stockWood = shade(p.weapon, 1.9);
+
+  // Culata larga de madera, apoyada en el hombro.
+  buf.rect(handX - 5, barrelY, 5, 2, stockWood);
+  buf.hLine(handX - 5, handX - 1, barrelY + 1, shade(stockWood, 0.65));
+
+  // Cañón con guardamanos.
+  buf.rect(handX, barrelY, barrelLen - 3, 2, p.weapon);
+  buf.hLine(handX + barrelLen - 3, handX + barrelLen, barrelY, p.weapon);
+  buf.hLine(handX, handX + barrelLen - 4, barrelY, shade(p.weapon, 1.7));
+
+  // Mira telescópica: el rasgo que identifica al arma.
+  buf.rect(handX - 1, barrelY - 2, 5, 1, shade(p.weapon, 0.7));
+  buf.set(handX - 2, barrelY - 2, PALETTE.steelLight);
+  buf.set(handX + 4, barrelY - 2, PALETTE.steelLight);
+  // Montura que une la mira al cañón.
+  buf.set(handX, barrelY - 1, p.weapon);
+  buf.set(handX + 3, barrelY - 1, p.weapon);
+
+  // Bípode desplegado bajo el cañón, solo al apuntar.
+  if (pose.armAim > 0.6) {
+    const bipodX = handX + barrelLen - 4;
+    buf.line(bipodX, barrelY + 2, bipodX - 2, barrelY + 5, PALETTE.steelDark);
+    buf.line(bipodX, barrelY + 2, bipodX + 2, barrelY + 5, PALETTE.steelDark);
+  }
+
+  // Mano sobre el guardamanos.
   buf.set(handX, handY, p.skin);
   buf.set(handX - 1, handY, p.skinShade);
 }

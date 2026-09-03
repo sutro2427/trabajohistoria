@@ -1,4 +1,5 @@
 import type { Stance, TeamId } from '../balance/types.js';
+import { createPowerState, type PowerState } from './Strike.js';
 
 /** Unidad esperando en la cola de entrenamiento. */
 export interface TrainingOrder {
@@ -34,9 +35,19 @@ export interface Team {
   kills: number;
   /** Suministros acumulados por recolección durante la partida. */
   harvested: number;
+  /** Estado de los poderes disponibles (enfriamiento y usos). */
+  readonly powers: PowerState[];
+  /** Suministros gastados en poderes; alimenta el resumen final de gestión. */
+  spentOnPowers: number;
 }
 
-export function createTeam(id: TeamId, baseX: number, supplies: number, populationMax: number): Team {
+export function createTeam(
+  id: TeamId,
+  baseX: number,
+  supplies: number,
+  populationMax: number,
+  powerIds: readonly string[] = [],
+): Team {
   return {
     id,
     supplies,
@@ -51,6 +62,8 @@ export function createTeam(id: TeamId, baseX: number, supplies: number, populati
     totalSpawned: 0,
     kills: 0,
     harvested: 0,
+    powers: powerIds.map(createPowerState),
+    spentOnPowers: 0,
   };
 }
 

@@ -1,7 +1,7 @@
 import { bakeArt } from '../art/SpriteBaker.js';
 import { GameLoop } from '../core/GameLoop.js';
 import { getUnitDef, WORLD } from '../domain/balance/balance.js';
-import { isDifficultyId, type DifficultyId } from '../domain/balance/difficulty.js';
+import { getLevel, TOTAL_LEVELS } from '../domain/balance/levels.js';
 import { GameSession } from '../domain/GameSession.js';
 import type { Stance } from '../domain/balance/types.js';
 import { InputManager } from '../input/InputManager.js';
@@ -12,25 +12,39 @@ import { Renderer } from '../render/Renderer.js';
 import { SpriteAtlas } from '../render/SpriteAtlas.js';
 import { CommandBar } from '../ui/CommandBar.js';
 import { Hud } from '../ui/Hud.js';
-import { MainMenu } from '../ui/MainMenu.js';
+import { LobbyScreen } from '../ui/LobbyScreen.js';
 import { ResultOverlay } from '../ui/ResultOverlay.js';
+import { ScoreBoard } from '../ui/ScoreBoard.js';
+import type { ICompetition, LobbySnapshot } from '../campaign/ICompetition.js';
+import {
+  createRun,
+  isComplete,
+  recordDefeat,
+  recordVictory,
+  summarize,
+  toScoreEntry,
+  type CampaignRun,
+} from '../campaign/CampaignRun.js';
 
 /**
  * ============================================================================
  * RAÍZ DE COMPOSICIÓN de la aplicación
  * ============================================================================
  *
- * Une la simulación (que no sabe nada del navegador) con el render, la
- * interfaz y la entrada. Es el único punto del proyecto donde ambos mundos se
- * tocan, y por eso es el único que necesita saber que existe un `<canvas>`.
+ * Une cuatro mundos que no se conocen entre sí: la simulación (sin DOM), el
+ * render, la interfaz y la competencia en red. Es el único punto del proyecto
+ * que sabe que existen a la vez.
  *
- * El ciclo de vida es de tres estados y no tiene más:
+ * Ciclo de vida completo:
  *
- *      MENÚ ──JUGAR──► PARTIDA ──fin de nivel──► RESULTADO ──► MENÚ
+ *   ACCESO ─nombre─► SALA ─salida─► OPERACIÓN 1 ─► 2 ─► 3 ─► CAMPAÑA COMPLETA
+ *                                        │                        │
+ *                                    derrota                 tabla de
+ *                                        └──repetir            posiciones
  *
- * El menú corre sobre una sesión ya construida: el campo de batalla que se ve
- * detrás del título es real, con su selva y su base, solo que sin simular. Eso
- * evita tener una segunda escena de fondo que mantener.
+ * Detrás de cada pantalla corre el campo de batalla real, sin simular: el
+ * fondo del menú es el propio juego, así que no hay una segunda escena que
+ * mantener.
  */
 export class Game {
   private readonly ctx: CanvasRenderingContext2D;
@@ -38,7 +52,9 @@ export class Game {
   private readonly camera: Camera;
   private readonly loop: GameLoop;
   private readonly overlay = new ResultOverlay();
-  private readonly menu: MainMenu;
+  private readonly lobby: LobbyScreen;
+  private readonly board: ScoreBoard;
+  private readonly input: InputManager;
 
   private session!: GameSession;
   private renderer!: Renderer;
@@ -46,23 +62,27 @@ export class Game {
   private hud!: Hud;
   private commandBar!: CommandBar;
 
-  /** Semilla de la partida actual; se puede fijar por URL para reproducir bugs. */
-  private seed: number;
-  /** Semilla pedida por URL, si la hubiera: fija todas las partidas de la sesión. */
-  private readonly fixedSeed: number | undefined;
-  /** Dificultad impuesta por URL; tiene prioridad sobre la última guardada. */
-  private readonly forcedDifficulty: DifficultyId | undefined;
+  /** Intento de campaña en curso; `null` hasta que el alumno se identifica. */
+  private run: CampaignRun | null = null;
   private levelId = 1;
-  private difficulty: DifficultyId = 'normal';
+
+  private seed: number;
+  private readonly fixedSeed: number | undefined;
+
   /** `true` mientras el jugador puede dar órdenes. */
   private interactive = false;
-  /** Segundos en el menú, o `null` si el menú no está visible. Anima el fondo. */
+  /** Segundos en pantalla de espera, o `null` durante la partida. */
   private menuTime: number | null = 0;
+  /** Último estado conocido de la sala. */
+  private snapshot: LobbySnapshot = { state: 'lobby', startedAt: null, participants: [] };
+  /** Evita arrancar dos veces si la salida llega mientras ya se está jugando. */
+  private started = false;
 
   constructor(
     canvas: HTMLCanvasElement,
     private readonly progressRepo: IProgressRepository,
-    options: { seed?: number; timeScale?: number; difficulty?: DifficultyId } = {},
+    private readonly competition: ICompetition,
+    options: { seed?: number; timeScale?: number; admin?: boolean } = {},
   ) {
     const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) throw new Error('No se pudo obtener el contexto 2D del canvas');
@@ -71,18 +91,27 @@ export class Game {
 
     this.fixedSeed = options.seed;
     this.seed = options.seed ?? Math.floor(Math.random() * 1_000_000);
-    // Una dificultad pedida explícitamente (por URL) manda sobre la guardada.
-    this.forcedDifficulty = options.difficulty;
-    if (options.difficulty) this.difficulty = options.difficulty;
     this.camera = new Camera(WORLD.logicalWidth);
 
-    // El arte se hornea una única vez, al arrancar, y se reutiliza en todos
-    // los niveles: es TypeScript puro convertido en lienzos.
+    // El arte se hornea una sola vez y sirve para toda la campaña.
     this.atlas = new SpriteAtlas(bakeArt());
 
-    new InputManager(canvas, this.camera, WORLD.logicalWidth);
+    // Se guarda la referencia: la versión anterior descartaba el objeto y por
+    // eso el desplazamiento de cámara con el teclado nunca llegaba a ejecutarse.
+    this.input = new InputManager(canvas, this.camera, WORLD.logicalWidth);
 
-    this.menu = new MainMenu();
+    this.board = new ScoreBoard();
+    this.lobby = new LobbyScreen({
+      onJoin: (name) => this.joinCompetition(name),
+      onPlaySolo: () => this.beginCampaign(),
+    });
+
+    if (options.admin) {
+      this.board.enableAdmin(
+        () => void this.competition.startCompetition(),
+        () => void this.competition.resetCompetition(),
+      );
+    }
 
     this.loop = new GameLoop({
       fixedUpdate: (dt) => this.fixedUpdate(dt),
@@ -91,28 +120,70 @@ export class Game {
     if (options.timeScale) this.loop.setTimeScale(options.timeScale);
   }
 
-  /** Arranca la aplicación en el menú principal. */
+  /** Arranca la aplicación en la pantalla de acceso. */
   start(): void {
-    // El menú abre en la última dificultad jugada, salvo que la URL imponga otra.
-    const progress = this.progressRepo.load();
-    if (!this.forcedDifficulty && isDifficultyId(progress.difficulty)) {
-      this.difficulty = progress.difficulty;
-    }
-
     this.levelId = 1;
     this.buildSession();
     this.loop.start();
-    this.openMenu();
+
+    this.competition.subscribe((snapshot) => this.onLobbyChange(snapshot));
+    this.lobby.show();
   }
 
-  /** Vuelve al menú principal con el campo de batalla de fondo. */
-  private openMenu(): void {
+  // -------------------------------------------------------------------------
+  // Competencia
+  // -------------------------------------------------------------------------
+
+  private async joinCompetition(name: string): Promise<{ ok: boolean; reason?: string }> {
+    const result = await this.competition.join(name);
+    if (!result.ok) return { ok: false, reason: result.reason };
+
+    this.run = createRun(name);
+    this.board.setPlayerName(name);
+    await this.competition.setReady(true);
+    // Se publica de inmediato para que el alumno se vea en la tabla desde el
+    // primer momento, aunque todavía no haya jugado nada.
+    await this.competition.publish(toScoreEntry(this.run));
+    return { ok: true };
+  }
+
+  /** Reacciona a los cambios de la sala: entradas, salidas y la señal de inicio. */
+  private onLobbyChange(snapshot: LobbySnapshot): void {
+    this.snapshot = snapshot;
+    if (this.lobby.visible) this.lobby.render(snapshot, this.competition.online);
+    if (this.board.visible) this.board.render(snapshot, this.competition.online);
+
+    // La salida la da el profesor y arranca a todos a la vez.
+    if (snapshot.state === 'running' && !this.started && this.run !== null) {
+      this.beginCampaign();
+    }
+  }
+
+  /** Empieza la campaña por el nivel 1. */
+  private beginCampaign(): void {
+    if (this.started) return;
+    this.started = true;
+
+    // Quien pulsa "Jugar ahora" sin haberse identificado juega igualmente: en
+    // clase es peor que alguien se quede fuera que un jugador anónimo de más.
+    this.run ??= createRun('Invitado');
+
+    this.lobby.hide();
+    this.board.setToggleVisible(true);
+    this.levelId = 1;
+    this.showBriefing();
+  }
+
+  // -------------------------------------------------------------------------
+  // Ciclo de la campaña
+  // -------------------------------------------------------------------------
+
+  /** Informe previo a la operación: explica lo que el nivel introduce. */
+  private showBriefing(): void {
     this.interactive = false;
     this.menuTime = 0;
-    const progress = this.progressRepo.load();
-    this.menu.show(this.session.level, progress, this.difficulty, (difficulty) =>
-      this.beginBattle(difficulty),
-    );
+    this.buildSession();
+    this.overlay.show(ResultOverlay.briefing(getLevel(this.levelId)), () => this.beginBattle());
   }
 
   /** Construye una partida nueva y cablea la interfaz con ella. */
@@ -121,27 +192,36 @@ export class Game {
     this.session = new GameSession(
       this.levelId,
       this.seed,
-      progress.tankBlueprintUnlocked,
-      // El botín del nivel anterior se acredita como suministros iniciales.
+      // Los planos del tanque se desbloquean al llegar al nivel que los usa.
+      this.levelId >= 3 || progress.tankBlueprintUnlocked,
       this.levelId > 1 ? progress.loot : 0,
-      this.difficulty,
     );
 
     const bus = this.session.world.bus;
     this.fx = new FxSystem(bus, this.camera);
     this.renderer = new Renderer(this.ctx, this.atlas, this.camera, this.fx, getUnitDef);
 
-    // El HUD y la barra se recrean por partida porque se suscriben al bus de
-    // esa partida concreta; un bus nuevo necesita suscriptores nuevos.
     this.hud = new Hud(bus);
-    this.commandBar = new CommandBar(bus, {
-      onTrain: (defId) => {
-        if (this.interactive) this.session.trainUnit(defId);
+
+    // La barra anterior se destruye: se suscribe al bus y al teclado, y sin
+    // soltar esos oyentes se acumularían nivel tras nivel.
+    this.commandBar?.destroy();
+    this.commandBar = new CommandBar(
+      bus,
+      {
+        onTrain: (defId) => {
+          if (this.interactive) this.session.trainUnit(defId);
+        },
+        onStance: (stance: Stance) => {
+          if (this.interactive) this.session.setStance(stance);
+        },
+        onLaunchPower: (powerId, worldX) => {
+          if (this.interactive) this.session.launchPower(powerId, worldX);
+        },
       },
-      onStance: (stance: Stance) => {
-        if (this.interactive) this.session.setStance(stance);
-      },
-    });
+      WORLD.logicalWidth,
+    );
+    this.commandBar.buildFor(this.session.buildable, this.session.powers);
 
     const team = this.session.world.teams.US;
     this.hud.reset(team.supplies, team.population, team.populationMax, this.session.level.objective);
@@ -154,144 +234,156 @@ export class Game {
     this.interactive = false;
   }
 
-  /**
-   * Empieza una partida con la dificultad elegida.
-   *
-   * Se reconstruye la sesión aunque ya hubiera una: la dificultad se inyecta en
-   * el constructor de `GameSession` y la IA es inmutable una vez cableada, que
-   * es justo lo que se quiere — nadie puede cambiarla a mitad de partida.
-   */
-  private beginBattle(difficulty: DifficultyId): void {
-    this.difficulty = difficulty;
-
-    const progress = this.progressRepo.load();
-    progress.difficulty = difficulty;
-    this.progressRepo.save(progress);
-
-    // Con `?seed=` se respeta la semilla pedida para poder reproducir una
-    // partida exacta; sin ella, cada despliegue es distinto.
+  private beginBattle(): void {
     this.seed = this.fixedSeed ?? Math.floor(Math.random() * 1_000_000);
     this.buildSession();
-
     this.menuTime = null;
     this.interactive = true;
   }
 
+  /** Cierra el nivel: registra el resultado, publica y decide qué viene después. */
+  private onLevelEnded({ won, loot, elapsed }: { won: boolean; loot: number; elapsed: number }): void {
+    this.interactive = false;
+    const world = this.session.world;
+    const level = this.session.level;
+    const team = world.teams.US;
+    const run = this.run;
+
+    if (!won) {
+      if (run) {
+        recordDefeat(run);
+        void this.competition.publish(toScoreEntry(run));
+      }
+      const reason = world.structureOf('US')
+        ? 'Tu fuerza ha quedado aniquilada y no queda con qué reponerla.\n' +
+          'La economía sostiene al ejército, pero sin ejército no hay economía que defender.'
+        : 'La base de fuego ha caído. La posición se ha perdido.';
+      // Se repite el mismo nivel: la campaña no retrocede.
+      this.overlay.show(ResultOverlay.defeat(level, elapsed, reason), () => this.beginBattle());
+      return;
+    }
+
+    // --- Nivel superado ---
+    const progress = this.progressRepo.load();
+    progress.victories++;
+    progress.loot = loot;
+    progress.tankBlueprintUnlocked = true;
+    progress.unlockedLevel = Math.max(progress.unlockedLevel, this.levelId + 1);
+    const best = progress.bestTimeSec[String(this.levelId)];
+    if (best === undefined || elapsed < best) progress.bestTimeSec[String(this.levelId)] = elapsed;
+    this.progressRepo.save(progress);
+
+    if (run) {
+      recordVictory(run, {
+        level: this.levelId,
+        seconds: Math.round(elapsed),
+        harvested: Math.round(team.harvested),
+        leftover: Math.round(team.supplies),
+        losses: world.teams.VC.kills,
+        kills: team.kills,
+        spentOnPowers: Math.round(team.spentOnPowers),
+      });
+      void this.competition.publish(toScoreEntry(run));
+    }
+
+    if (run && isComplete(run)) {
+      this.onCampaignComplete(run);
+      return;
+    }
+
+    this.overlay.show(
+      ResultOverlay.levelCleared(level, elapsed, team.kills),
+      () => {
+        this.levelId = Math.min(TOTAL_LEVELS, this.levelId + 1);
+        this.showBriefing();
+      },
+      () => this.board.show(),
+    );
+  }
+
+  /** Cierre de la campaña: el mensaje del juego, con las cifras del alumno. */
+  private onCampaignComplete(run: CampaignRun): void {
+    this.menuTime = 0;
+    this.board.render(this.snapshot, this.competition.online);
+
+    this.overlay.show(
+      ResultOverlay.campaignComplete(summarize(run), run.playerName),
+      () => this.board.show(),
+      () => {
+        // Volver a intentarlo: se conserva el nombre y el histórico de la sala,
+        // pero la campaña empieza de cero.
+        this.run = createRun(run.playerName);
+        this.levelId = 1;
+        this.showBriefing();
+      },
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Bucle
+  // -------------------------------------------------------------------------
+
   private fixedUpdate(dt: number): void {
     if (this.interactive) this.session.step(dt);
+    this.input.update(dt);
     this.fx.update(dt);
     this.hud.update(dt, this.session.world.elapsed);
 
     const team = this.session.world.teams.US;
-    this.commandBar.update(
-      dt,
-      team.supplies,
-      (defId) => this.session.costOf(defId),
-      team.queue[0],
-      (defId) => getUnitDef(defId).name,
-      this.interactive,
-    );
+    this.commandBar.update(dt, {
+      supplies: team.supplies,
+      queue: team.queue[0],
+      interactive: this.interactive,
+      powerCooldowns: new Map(team.powers.map((p) => [p.defId, p.cooldown])),
+      cameraX: this.camera.x,
+    });
 
     if (this.menuTime !== null) {
-      // En el menú la cámara pasea despacio por el valle. Se coloca de forma
-      // directa en lugar de con `pan`, que activaría el temporizador de
-      // control manual y dejaría la cámara clavada al empezar la partida.
+      // Fuera de la partida la cámara pasea despacio por el valle. Se coloca de
+      // forma directa y no con `pan`, que activaría el control manual y dejaría
+      // la cámara clavada al empezar el nivel.
       this.menuTime += dt;
       this.camera.snapTo(WORLD.usBaseX + 150 + Math.sin(this.menuTime * 0.12) * 120);
-      return;
+    } else {
+      this.camera.update(dt, this.focusPoint());
     }
-
-    this.camera.update(dt, this.focusPoint());
   }
 
   /**
    * Centro de interés de la cámara: el punto medio entre la unidad aliada más
-   * avanzada y la enemiga más avanzada.
-   *
-   * Encuadrar el frente —y no al jugador— es lo que mantiene el combate a la
-   * vista mientras la línea se desplaza por el mapa.
+   * avanzada y la enemiga más avanzada, siempre que estén en contacto.
    */
   private focusPoint(): number {
     const world = this.session.world;
-    // `WORLD` está congelado, así que sus campos se infieren como literales;
-    // se anota el tipo para poder acumular máximos y mínimos sobre ellos.
     let friendlyFront: number = WORLD.usBaseX;
     let enemyFront = Infinity;
 
     for (const unit of world.units) {
       if (!unit.alive) continue;
-      // Los recolectores trabajan por delante de la base, hacia el centro: si
-      // contaran, la cámara los seguiría hasta el depósito más avanzado y
-      // perdería de vista dónde está de verdad la línea de combate.
-      if (getUnitDef(unit.defId).harvest) continue;
       if (unit.team === 'US') {
+        // Los recolectores trabajan en retaguardia: si contaran, la cámara se
+        // quedaría mirando los depósitos en lugar de la batalla.
+        if (unit.defId === 'us_harvester') continue;
         friendlyFront = Math.max(friendlyFront, unit.transform.x);
       } else {
         enemyFront = Math.min(enemyFront, unit.transform.x);
       }
     }
 
-    // Punto de interés por defecto: justo delante de la línea propia.
     const ownFocus = friendlyFront + 70;
-
-    // El punto medio entre ambos frentes solo sirve si están razonablemente
-    // cerca. Con la guarnición enemiga esperando al otro extremo del mapa, la
-    // media caería en mitad de la selva vacía y la cámara enfocaría la nada:
-    // por eso, si el enemigo más próximo queda más allá de este umbral, se
-    // sigue al ejército propio.
+    // Con el enemigo lejos, el punto medio caería en mitad de la selva vacía.
     const CONTACT_RANGE = 260;
     if (enemyFront - friendlyFront > CONTACT_RANGE) return ownFocus;
-
     return (friendlyFront + enemyFront) * 0.5;
   }
 
   private render(alpha: number): void {
-    this.renderer.render(
-      this.session.world,
-      this.interactive ? alpha : 0,
-      this.menuTime,
-    );
+    this.renderer.render(this.session.world, this.interactive ? alpha : 0);
   }
 
-  /** Cierra la partida: guarda el progreso y muestra el resultado. */
-  private onLevelEnded({ won, loot, elapsed }: { won: boolean; loot: number; elapsed: number }): void {
-    this.interactive = false;
-    const world = this.session.world;
-
-    if (won) {
-      const progress = this.progressRepo.load();
-      progress.victories++;
-      progress.loot = loot;
-      progress.tankBlueprintUnlocked = true;
-      progress.unlockedLevel = Math.max(progress.unlockedLevel, this.levelId + 1);
-      const key = String(this.levelId);
-      const best = progress.bestTimeSec[key];
-      if (best === undefined || elapsed < best) progress.bestTimeSec[key] = elapsed;
-      this.progressRepo.save(progress);
-
-      this.overlay.show(
-        ResultOverlay.victory(loot, elapsed, world.teams.US.kills, this.difficulty),
-        () => this.openMenu(),
-      );
-    } else {
-      const reason = world.structureOf('US')
-        ? 'Tu fuerza ha quedado aniquilada y no queda con qué reponerla.\n' +
-          'Recuerda: la economía sostiene al ejército, pero sin ejército no hay economía que valga.'
-        : 'La base de fuego ha caído. La posición se ha perdido.';
-      this.overlay.show(ResultOverlay.defeat(elapsed, reason, this.difficulty), () =>
-        this.openMenu(),
-      );
-    }
-  }
-
-  /** Reinicia el nivel con la dificultad actual. Lo usa el puente de depuración. */
-  restart(): void {
-    this.overlay.hide();
-    this.menu.hide();
-    this.beginBattle(this.difficulty);
-  }
-
-  // --- Acceso controlado para el puente de depuración ---
+  // -------------------------------------------------------------------------
+  // Acceso controlado para el puente de depuración y los tests
+  // -------------------------------------------------------------------------
 
   getSession(): GameSession {
     return this.session;
@@ -301,8 +393,12 @@ export class Game {
     return this.interactive;
   }
 
-  getDifficulty(): DifficultyId {
-    return this.difficulty;
+  getLevelId(): number {
+    return this.levelId;
+  }
+
+  getRun(): CampaignRun | null {
+    return this.run;
   }
 
   setTimeScale(scale: number): void {
@@ -313,16 +409,22 @@ export class Game {
     return this.loop.getFps();
   }
 
-  /** Cambia la dificultad marcada en el menú, sin empezar la partida. */
-  selectDifficulty(difficulty: DifficultyId): void {
-    this.difficulty = difficulty;
-    if (this.menu.visible) this.menu.select(difficulty);
+  /** Salta el acceso y el informe. Lo usan los tests automatizados. */
+  skipToBattle(name = 'Prueba Automatizada'): void {
+    if (!this.run) {
+      this.run = createRun(name);
+      this.board.setPlayerName(name);
+    }
+    this.lobby.hide();
+    this.overlay.hide();
+    this.started = true;
+    this.board.setToggleVisible(true);
+    this.beginBattle();
   }
 
-  /** Salta el menú y despliega ya. Lo usan los tests automatizados. */
-  skipMenu(): void {
-    if (!this.menu.visible) return;
-    this.menu.hide();
-    this.beginBattle(this.difficulty);
+  /** Salta directamente a un nivel concreto. Solo para pruebas. */
+  jumpToLevel(levelId: number): void {
+    this.levelId = Math.min(TOTAL_LEVELS, Math.max(1, levelId));
+    this.skipToBattle();
   }
 }

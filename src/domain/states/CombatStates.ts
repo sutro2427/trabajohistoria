@@ -1,7 +1,21 @@
 import { approach, sign1 } from '../../core/math.js';
 import { setClip } from '../world/components.js';
 import { BaseUnitState, type StateId, type UnitStateContext } from './IUnitState.js';
-import { anchorFor, atAnchor, canFireAt, engageRange, findNearestEnemy } from './targeting.js';
+import {
+  anchorFor,
+  atAnchor,
+  canFireAt,
+  engageRange,
+  findNearestEnemy,
+  preferredRange,
+  shouldBackPedal,
+} from './targeting.js';
+
+/**
+ * Fracción de la velocidad normal a la que una unidad puede retroceder sin
+ * dar la espalda al enemigo. Nadie corre igual hacia atrás.
+ */
+const BACKPEDAL_SPEED_FACTOR = 0.5;
 
 /**
  * Estados de las unidades de combate.
@@ -103,9 +117,11 @@ export class EngageState extends BaseUnitState {
 
     const t = entity.transform;
     t.facing = sign1(targetX - t.x);
+    const distance = Math.abs(targetX - t.x);
 
-    // Ya está a tiro: dejar de avanzar y empezar a disparar.
-    if (Math.abs(targetX - t.x) <= def.range) return 'attack';
+    // Ya está a su distancia de tiro preferida: dejar de avanzar y disparar.
+    // La infantería usa todo su alcance; el francotirador se planta antes.
+    if (distance <= preferredRange(def)) return 'attack';
 
     // En repliegue no se persigue: se prefiere volver a la base.
     if (world.teams[entity.team].stance === 'retreat') return 'move';
@@ -149,10 +165,28 @@ export class AttackState extends BaseUnitState {
       return 'engage';
     }
 
-    entity.transform.facing = sign1(targetX - entity.transform.x);
+    const t = entity.transform;
+    t.facing = sign1(targetX - t.x);
+    const distance = Math.abs(targetX - t.x);
 
     // Se ha alejado: volver a acercarse.
     if (!canFireAt(entity, targetX, def)) return 'engage';
+
+    // Demasiado cerca para un tirador: retrocede manteniendo la cara al
+    // enemigo. Mientras retrocede no dispara, y ahí está su punto débil.
+    //
+    // El retroceso es deliberadamente MÁS LENTO que la marcha normal. Sin ese
+    // freno, un francotirador con más alcance que su perseguidor podía
+    // retroceder eternamente sin ser alcanzado jamás: era invencible frente a
+    // infantería, y un solo tirador enemigo bastaba para hacer un nivel
+    // imposible. Con el freno gana distancia un rato, pero acaba alcanzado si
+    // nadie lo cubre — que es exactamente la debilidad que debe tener.
+    if (shouldBackPedal(def, distance)) {
+      setClip(entity.anim, 'walk');
+      t.x -= t.facing * def.speed * BACKPEDAL_SPEED_FACTOR * dt;
+      combat.aimTimer = 0;
+      return null;
+    }
 
     // Encarar el arma antes del primer disparo da peso a la acción.
     combat.aimTimer += dt;
