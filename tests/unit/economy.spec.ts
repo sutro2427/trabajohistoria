@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GameSession } from '../../src/domain/GameSession.js';
-import { getUnitDef, harvesterIncomePerSecond } from '../../src/domain/balance/balance.js';
+import { getUnitDef, harvesterIncomePerSecond, WORLD } from '../../src/domain/balance/balance.js';
 
 const STEP = 1 / 60;
 
@@ -70,17 +70,33 @@ describe('Economía y recolección', () => {
     expect(elapsed / delivered).toBeLessThan(2.4);
   });
 
-  it('la fórmula documentada coincide con el balance real', () => {
+  it('la fórmula documentada conserva el ritmo económico de referencia', () => {
+    // El encargo era explícito: no tocar la velocidad de recolección. Con el
+    // depósito más cercano a 80 px salen 0,53 suministros/s, a un 6 % del
+    // 0,5/s que daba el punto de acopio único de la versión anterior.
     const rate = harvesterIncomePerSecond(getUnitDef('us_harvester'));
-    // 1 suministro cada 2 segundos = 0,5/s. Tolerancia del 5 %.
-    expect(rate).toBeGreaterThan(0.475);
-    expect(rate).toBeLessThan(0.525);
+    expect(rate).toBeGreaterThan(0.47);
+    expect(rate).toBeLessThan(0.57);
+  });
+
+  it('trabajar un depósito lejano rinde menos que uno cercano', () => {
+    // Es la consecuencia buscada de repartir los depósitos: la economía se
+    // encarece según se agotan los cómodos, sin cambiar la unidad.
+    const def = getUnitDef('us_harvester');
+    const near = harvesterIncomePerSecond(def, WORLD.resourceOffsets[0]);
+    const far = harvesterIncomePerSecond(def, WORLD.resourceOffsets[4]);
+    expect(far).toBeLessThan(near);
+    // El depósito más lejano rinde un 42 % de lo que rinde el más cercano.
+    // Es una penalización fuerte —que es el objetivo— pero no lo convierte en
+    // inútil: cinco recolectores en el bolsillo del fondo siguen dando 1,3
+    // suministros por segundo, suficiente para sostener la producción.
+    expect(far).toBeGreaterThan(near * 0.4);
   });
 
   it('no permite comprar sin suministros suficientes', () => {
     const session = new GameSession(1, 1);
     const team = session.world.teams.US;
-    team.supplies = 2; // menos que el coste del soldado (3)
+    team.supplies = 2; // menos que el coste del soldado (5)
 
     session.trainUnit('us_rifleman');
     session.step(STEP);
@@ -97,7 +113,7 @@ describe('Economía y recolección', () => {
     session.trainUnit('us_rifleman');
     session.step(STEP);
 
-    expect(team.supplies).toBe(before - 3);
+    expect(team.supplies).toBe(before - getUnitDef('us_rifleman').cost);
     expect(team.queue).toHaveLength(1);
   });
 

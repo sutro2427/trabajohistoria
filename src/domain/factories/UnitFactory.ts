@@ -4,6 +4,7 @@ import { newAnim } from '../world/components.js';
 import type { Entity, Structure } from '../world/Entity.js';
 import type { World } from '../world/World.js';
 import { advanceDirection } from '../world/Team.js';
+import { pickNodeFor } from '../world/ResourceNode.js';
 import type { StateId } from '../states/IUnitState.js';
 
 /**
@@ -31,13 +32,21 @@ export class UnitFactory {
     // carril una sensación de profundidad.
     const spawnX = x ?? team.baseX + dir * world.rng.range(8, 26);
     const spawnY = WORLD.groundY + world.rng.range(-WORLD.laneJitter, WORLD.laneJitter);
+    const id = world.allocateId();
+
+    // El depósito se elige ya al nacer para que el recolector salga andando
+    // hacia el correcto en su primer paso, sin un fotograma de indecisión.
+    const node = def.harvest ? pickNodeFor(world.nodes, def.team, spawnX) : undefined;
 
     const entity: Entity = {
-      id: world.allocateId(),
+      id,
       defId,
       team: def.team,
       alive: true,
       corpseTimer: 0,
+      // El identificador reparte las filas de forma determinista y sin llevar
+      // un contador aparte que hubiera que mantener al morir las unidades.
+      formationSlot: id % WORLD.formationSlots,
       transform: { x: spawnX, y: spawnY, prevX: spawnX, prevY: spawnY, facing: dir },
       health: {
         hp: def.hp,
@@ -61,7 +70,8 @@ export class UnitFactory {
               phase: 'toNode' as const,
               carried: 0,
               timer: 0,
-              nodeX: team.baseX + def.harvest.nodeOffsetX,
+              nodeId: node?.id ?? 0,
+              nodeX: node?.x ?? team.baseX,
               depotX: team.baseX,
             },
           }

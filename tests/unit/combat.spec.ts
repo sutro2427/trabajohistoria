@@ -127,8 +127,17 @@ describe('Geometría de impacto', () => {
 });
 
 describe('Geometría del mundo', () => {
-  it('las bases están en extremos opuestos y separadas', () => {
+  it('las bases están en extremos opuestos, cerca pero no encima', () => {
+    // El mapa se acortó a propósito para que la tropa no se pase la partida
+    // caminando. El límite inferior es el que garantiza que sigue habiendo
+    // terreno que disputar entre las dos economías.
     expect(WORLD.usBaseX).toBeLessThan(WORLD.vcBaseX);
-    expect(WORLD.vcBaseX - WORLD.usBaseX).toBeGreaterThan(WORLD.logicalWidth * 3);
+    const distance = WORLD.vcBaseX - WORLD.usBaseX;
+    expect(distance).toBeGreaterThan(WORLD.logicalWidth * 2);
+    expect(distance).toBeLessThan(WORLD.logicalWidth * 3);
+  });
+
+  it('el campo de batalla contiene ambas bases con margen', () => {
+    expect(WORLD.battlefieldWidth).toBeGreaterThan(WORLD.vcBaseX + 40);
   });
 });

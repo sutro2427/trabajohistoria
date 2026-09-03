@@ -4,6 +4,7 @@ import { WORLD } from '../balance/balance.js';
 import type { LevelDef, TeamId } from '../balance/types.js';
 import type { GameEvents } from '../events.js';
 import type { Entity, Projectile, Structure } from './Entity.js';
+import { createResourceNodes, type ResourceNode } from './ResourceNode.js';
 import { createTeam, type Team } from './Team.js';
 
 /**
@@ -21,6 +22,8 @@ export class World {
   readonly units: Entity[] = [];
   readonly structures: Structure[] = [];
   readonly projectiles: Projectile[] = [];
+  /** Depósitos de suministros del mapa, de los dos bandos. */
+  readonly nodes: ResourceNode[] = [];
   readonly teams: Readonly<Record<TeamId, Team>>;
 
   /** Segundos de partida transcurridos. */
@@ -34,11 +37,21 @@ export class World {
   constructor(level: LevelDef, seed: number) {
     this.level = level;
     this.rng = new Rng(seed);
+    // Los dos bandos arrancan con lo mismo: mismos suministros, mismo techo de
+    // población, mismos costes. La única diferencia es quién da las órdenes.
     this.teams = Object.freeze({
       US: createTeam('US', WORLD.usBaseX, level.startingSupplies, level.populationMax),
-      // La IA no gasta población: su límite lo impone `maxTotalSpawned`.
-      VC: createTeam('VC', WORLD.vcBaseX, 0, 99),
+      VC: createTeam('VC', WORLD.vcBaseX, level.startingSupplies, level.populationMax),
     });
+
+    const allocate = (): number => this.allocateId();
+    this.nodes.push(...createResourceNodes('US', WORLD.usBaseX, allocate));
+    this.nodes.push(...createResourceNodes('VC', WORLD.vcBaseX, allocate));
+  }
+
+  /** Depósito por identificador, esté vacío o no. */
+  findNode(id: number): ResourceNode | undefined {
+    return this.nodes.find((n) => n.id === id);
   }
 
   /** Identificador único creciente para toda entidad del mundo. */

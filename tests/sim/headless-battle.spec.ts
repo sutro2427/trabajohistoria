@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { GameSession } from '../../src/domain/GameSession.js';
+import { getUnitDef } from '../../src/domain/balance/balance.js';
+import type { DifficultyId } from '../../src/domain/balance/difficulty.js';
+import { getLevel } from '../../src/domain/balance/levels.js';
+import { UnitFactory } from '../../src/domain/factories/UnitFactory.js';
 
 /**
  * ============================================================================
@@ -28,8 +32,13 @@ interface MatchResult {
 }
 
 /** Juega una partida completa aplicando una política y devuelve el resultado. */
-function playMatch(seed: number, policy: Policy, levelId = 1): MatchResult {
-  const session = new GameSession(levelId, seed);
+function playMatch(
+  seed: number,
+  policy: Policy,
+  difficulty: DifficultyId = 'normal',
+  levelId = 1,
+): MatchResult {
+  const session = new GameSession(levelId, seed, false, 0, difficulty);
   let sinceDecision = 0;
 
   for (let i = 0; i < MAX_SECONDS / STEP; i++) {
@@ -146,15 +155,96 @@ describe('Balance del nivel 1', () => {
     expect(a).toEqual(b);
   });
 
-  it('la IA enemiga respeta su tope de unidades generadas', () => {
+  it('la IA no produce más de lo que su economía puede pagar', () => {
+    // Sustituye al antiguo tope duro de unidades generadas. Ya no hace falta
+    // un límite artificial: el límite es el dinero, igual que para el jugador.
     const session = new GameSession(1, 5);
     for (let i = 0; i < 400 / STEP; i++) {
       session.step(STEP);
       if (session.world.outcome) break;
     }
-    // El tope duro es lo que garantiza que el nivel termina.
-    expect(session.world.teams.VC.totalSpawned).toBeLessThanOrEqual(
-      session.level.ai.maxTotalSpawned + session.level.garrison.length,
-    );
+
+    const level = getLevel(1);
+    const cheapest = Math.min(...level.enemyBuildable.map((id) => getUnitDef(id).cost));
+    const vc = session.world.teams.VC;
+    const bought = vc.totalSpawned - level.garrison.length;
+
+    expect(bought * cheapest).toBeLessThanOrEqual(level.startingSupplies + vc.harvested);
+  });
+});
+
+describe('Dificultad', () => {
+  const seeds = [1, 2, 3, 7, 13, 42, 99, 123, 777, 2024];
+
+  it('la apertura estándar gana de forma fiable en Normal', () => {
+    const wins = seeds.filter((seed) => playMatch(seed, standardPolicy, 'normal').won).length;
+    expect(wins).toBe(seeds.length);
+  });
+
+  it('la misma apertura rinde peor cuanto más sube la dificultad', () => {
+    // La comprobación de que la dificultad significa algo: exactamente el mismo
+    // jugador guionizado, exactamente las mismas semillas, y la única variable
+    // que cambia es lo bien que administra la IA.
+    const winsAt = (difficulty: DifficultyId): number =>
+      seeds.filter((seed) => playMatch(seed, standardPolicy, difficulty).won).length;
+
+    const normal = winsAt('normal');
+    const impossible = winsAt('impossible');
+    expect(impossible).toBeLessThan(normal);
+  });
+
+  it('ninguna dificultad deja una partida sin resolver', () => {
+    for (const difficulty of ['normal', 'hard', 'impossible'] as const) {
+      for (const seed of [1, 42, 777]) {
+        expect(playMatch(seed, standardPolicy, difficulty).timedOut).toBe(false);
+        expect(playMatch(seed, greedyPolicy, difficulty).timedOut).toBe(false);
+      }
+    }
+  });
+});
+
+describe('Rendimiento con ejércitos grandes', () => {
+  it('sostiene 50 unidades por bando sin desplomarse', () => {
+    // El tope de población subió de 12 a 50, así que hay que comprobar que el
+    // paso de simulación aguanta el caso peor: cien unidades en pantalla,
+    // todas empujándose y buscando blanco.
+    const session = new GameSession(1, 77);
+    const factory = new UnitFactory(getUnitDef);
+
+    for (let i = 0; i < 50; i++) {
+      factory.create(session.world, 'us_rifleman', 400 + (i % 10) * 6);
+      factory.create(session.world, 'vc_guerrilla', 700 - (i % 10) * 6);
+    }
+    expect(session.world.units.length).toBeGreaterThanOrEqual(100);
+
+    const started = performance.now();
+    for (let i = 0; i < 600; i++) session.step(STEP); // 10 s de simulación
+    const elapsed = performance.now() - started;
+
+    // Diez segundos de juego deben simularse muy por debajo del tiempo real;
+    // si esto se acerca a 10 000 ms, el navegador iría a tirones.
+    expect(elapsed).toBeLessThan(4000);
+  });
+
+  it('mantiene las unidades dentro del carril y sin apilarse en un punto', () => {
+    // La separación en dos dimensiones es lo que hace legible una formación
+    // grande. Sin ella, las cincuenta unidades convergerían al mismo píxel.
+    const session = new GameSession(1, 78);
+    const factory = new UnitFactory(getUnitDef);
+    for (let i = 0; i < 40; i++) factory.create(session.world, 'us_rifleman', 300);
+
+    for (let i = 0; i < 300; i++) session.step(STEP);
+
+    const ours = session.world.units.filter((u) => u.alive && u.team === 'US');
+    const xs = ours.map((u) => u.transform.x);
+    const spread = Math.max(...xs) - Math.min(...xs);
+
+    // Ni amontonadas en un punto ni desplegadas por medio mapa.
+    expect(spread).toBeGreaterThan(20);
+    expect(spread).toBeLessThan(260);
+
+    for (const unit of ours) {
+      expect(Math.abs(unit.transform.y - 206)).toBeLessThanOrEqual(9.001);
+    }
   });
 });

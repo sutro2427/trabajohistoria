@@ -1,8 +1,8 @@
-# Operación Delta
+# Mekong Front: 1968
 
 Juego de estrategia y gestión en tiempo real, **vista lateral 2D en pixel art**, ambientado en la Guerra de Vietnam. Reproduce el ciclo jugable de *Stick War: Legacy* con contenido, arte y ambientación **completamente originales**.
 
-> **Recolectar suministros → comprar recolectores → hacer crecer la economía → formar un ejército → defender los ataques → ordenar el asalto → tomar la posición enemiga.**
+> **Menú y dificultad → recolectar suministros → comprar recolectores → hacer crecer la economía → formar un ejército → ver al enemigo hacer exactamente lo mismo → defender → asaltar → tomar la posición.**
 
 ---
 
@@ -15,22 +15,26 @@ npm run dev      # http://localhost:5173
 
 | Acción | Ratón | Teclado |
 |---|---|---|
-| Comprar Soldado (3 suministros) | botón *Soldado* | `1` |
-| Comprar Recolector (4 suministros) | botón *Recolector* | `2` |
+| Comprar Soldado (5 suministros) | botón *Soldado* | `1` |
+| Comprar Recolector (6 suministros) | botón *Recolector* | `2` |
 | Atacar / Defender / Retirarse | botones de *Órdenes* | `A` / `D` / `R` |
 | Mover la cámara | arrastrar | `←` `→` |
 
 **Objetivo:** destruir el Puesto de Mando vietnamita. **Derrota:** que caiga tu Base de Fuego, o quedarte sin tropas y sin suministros para reponerlas.
 
-Parámetros de URL útiles: `?seed=42` fija la partida, `?speed=4` acelera el tiempo, `?debug=1` expone `window.__GAME_DEBUG__`.
+En el menú principal se elige **dificultad**: Normal, Difícil o Imposible. No cambia cuántos enemigos hay — cambia lo bien que la IA administra su economía (ver más abajo).
+
+Parámetros de URL útiles: `?seed=42` fija la partida, `?speed=4` acelera el tiempo, `?difficulty=hard` preselecciona la dificultad, `?debug=1` expone `window.__GAME_DEBUG__`.
 
 ---
 
 ## Cómo se juega bien
 
-La decisión central es la misma que en Stick War: **economía o ejército**. Empiezas con 10 suministros, justo para dos recolectores. La apertura recomendada es **tres recolectores y después soldados**, atacando al reunir cinco.
+La decisión central es la misma que en Stick War: **economía o ejército**. Empiezas con 14 suministros, justo para dos recolectores. La apertura recomendada es **tres recolectores y después soldados**, atacando al reunir cinco.
 
-El freno del ritmo no es el dinero, es **la cola de entrenamiento de una sola ranura**. Con dos recolectores produciendo ~1 suministro/s, los costes dejan de ser el problema y lo escaso pasa a ser el tiempo. Por eso acumular suministros no sirve de nada: hay que decidir *qué* construir ahora.
+Hay **dos** frenos, y conviene distinguirlos. La **cola de entrenamiento de una sola ranura** limita *cuántas* unidades salen; los **costes** (5 y 6) limitan *si* salen. Tres recolectores rinden ~1,6 suministros/s y un soldado cada 3 s cuesta ~1,7/s: la caja queda al filo, así que acumular no sirve pero gastar mal tampoco.
+
+Cada bando tiene **cinco depósitos finitos** escalonados desde su base hacia el centro. El cercano es cómodo y pequeño; el lejano aguanta la partida pero está expuesto y el viaje cuesta el doble. Según se agotan, la economía no se corta: **se encarece**. En partida larga eso decide.
 
 Si solo compras recolectores, pierdes. Está verificado por los tests: la IA castiga la economía pura.
 
@@ -110,31 +114,46 @@ Todo vive en `src/domain/balance/balance.ts`. **Ajustar el juego no toca ni una 
 
 | Unidad | Vida | Arm. | Daño | Cadencia | Alcance | Vel. | Pob. | Coste |
 |---|---|---|---|---|---|---|---|---|
-| Soldado | 100 | 0 | 12 | 1,4/s | 90 px | 34 px/s | 1 | 3 |
-| Recolector | 60 | 0 | — | — | — | 45 px/s | 1 | 4 |
-| Guerrillero (enemigo) | 90 | 0 | 10 | 1,5/s | 84 px | 38 px/s | 1 | — |
+| Soldado | 100 | 0 | 12 | 1,4/s | 90 px | 34 px/s | 1 | 5 |
+| Recolector | 60 | 0 | — | — | — | 45 px/s | 1 | 6 |
+| Guerrillero (enemigo) | 90 | 0 | 10 | 1,5/s | 84 px | 38 px/s | 1 | 5 |
+| Porteador (enemigo) | 60 | 0 | — | — | — | 45 px/s | 1 | 6 |
 
-**Ciclo del recolector** — 6,1 s por 3 suministros = **1 suministro cada 2,03 s**, tal como se especificó. Pero es un viaje real y visible: sale del campamento hacia la zona de acopio, se agacha a cargar, y vuelve. Como el minero de Stick War, **se le puede matar**.
+Tope de población: **50 por bando**. Mapa: 1000 px entre bases (la mitad que antes, para que la tropa no se pase la partida caminando).
+
+**Ciclo del recolector** — 5,66 s por 3 suministros en el depósito más cercano = **1 suministro cada 1,9 s**, el mismo ritmo de siempre. Pero es un viaje real y visible: sale del campamento hacia el depósito, se agacha a cargar, y vuelve. Como el minero de Stick War, **se le puede matar**. En el depósito más lejano el mismo recolector rinde un 42 % menos.
 
 **Notas de balance:**
-- El soldado gana el duelo 1v1 (mata en 5,4 s; el guerrillero tarda 6,7 s), pero el enemigo es un 12 % más rápido y cobra renta gratuita. La ventaja tiene que salir de las órdenes y la economía, no de las estadísticas.
+- El soldado gana el duelo 1v1 (mata en 5,4 s; el guerrillero tarda 6,7 s), pero el enemigo es un 12 % más rápido. La ventaja tiene que salir de las órdenes y la economía, no de las estadísticas.
 - Los 6 px de ventaja de alcance dan función mecánica real a **DEFENDER**: en posición defensiva disparas primero.
 - `minDamage: 1` evita que una unidad con armadura ≥ daño sea invulnerable y bloquee la partida.
 - El `flinchCooldown` impide que el fuego sostenido encadene aturdimientos y paralice a una unidad.
 
-**IA enemiga** — tres reglas por prioridad: (1) defensa reactiva si cruzas su línea de alarma, (2) umbral de agresión (solo ataca con 1,15× tu poder, lo que produce el vaivén característico del género), (3) oleadas periódicas con **tope duro de 14 unidades**, que garantiza que el nivel termina.
+**IA enemiga — economía propia, no renta invisible.** El enemigo juega al mismo juego: manda porteadores a *sus* depósitos, esos porteadores caminan y se pueden matar, y con lo que traen paga cada guerrillero por la misma cola de una ranura, al mismo precio y con el mismo tope de población. **No hay una sola unidad gratis**, y hay un test que lo comprueba comparando lo producido con lo ingresado. Matarle los porteadores le corta la producción.
+
+Sus decisiones son dos por turno: qué comprar (economía hasta cubrir su mínimo, después tropa) y qué postura tomar (defensa reactiva si le cruzas la línea de alarma, ataque solo con la ventaja que exija su perfil).
+
+**La dificultad no le regala nada** — los tres perfiles arrancan con los mismos suministros, el mismo tope y la misma guarnición. Lo que cambia es la calidad de las decisiones: cuántos porteadores considera suficientes, cada cuánto piensa, cuánto tarda en reaccionar a una invasión, cuánta ventaja exige antes de atacar, si sabe cortar un ataque que se ha torcido y con qué frecuencia se equivoca a propósito.
+
+| | Economía | Reacción | Ataca con | Corta el ataque perdido | Errores |
+|---|---|---|---|---|---|
+| Normal | 2 porteadores (no llena su cola) | 2,5 s | 1,15× y 5 hombres | nunca | 30 % |
+| Difícil | 4 porteadores | 1,8 s | 1,15× y 6 hombres | sí | 18 % |
+| Imposible | 5 porteadores | 0,25 s | 1,30× y 8 hombres | sí, antes | 0 % |
+
+Calibrado jugando partidas completas sin navegador. Contra la apertura estándar (tres recolectores, luego soldados, atacar al reunir cinco), sobre diez semillas fijas: **Normal 10/10** victorias del jugador, **Difícil 3/10**, **Imposible 0/10**. Contra una política mejor —cuatro recolectores, acumular hasta catorce soldados y replegarse si el ataque se desangra— Imposible cae 9 de cada 10: es duro, no un muro.
 
 ---
 
 ## Verificación
 
 ```bash
-npm run verify    # typecheck + 49 tests
+npm run verify    # typecheck + 71 tests
 npm test          # solo los tests
-npm run build     # compila a dist/ (22 KB gzip)
+npm run build     # compila a dist/ (25 KB gzip)
 ```
 
-**49 tests, en tres niveles:**
+**71 tests, en tres niveles:**
 
 1. **Unitarios** (economía, combate, máquina de estados, IA, sprites) — milisegundos.
 2. **Partidas completas simuladas sin navegador** — es lo que valida el *balance* de verdad:

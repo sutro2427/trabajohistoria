@@ -61,7 +61,15 @@ export interface HarvesterState {
   carried: number;
   /** Temporizador de la fase actual. */
   timer: number;
-  /** Coordenada X de la zona de acopio asignada. */
+  /**
+   * Depósito asignado, o 0 si no hay ninguno disponible.
+   *
+   * Se guarda el identificador y no una referencia al objeto para que el
+   * recolector no pueda quedarse aferrado a un depósito ya vacío: cada vez que
+   * sale de la base vuelve a preguntar cuál le conviene.
+   */
+  nodeId: number;
+  /** Coordenada X del depósito asignado. */
   nodeX: number;
   /** Coordenada X del punto de entrega (la base). */
   depotX: number;

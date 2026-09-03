@@ -1,4 +1,5 @@
 import type { Stance } from '../domain/balance/types.js';
+import { isDifficultyId, type DifficultyId } from '../domain/balance/difficulty.js';
 import type { Game } from './Game.js';
 
 /**
@@ -20,10 +21,15 @@ export interface DebugState {
   population: number;
   populationMax: number;
   stance: Stance;
+  difficulty: DifficultyId;
   elapsed: number;
   fps: number;
   interactive: boolean;
   units: { id: number; defId: string; team: string; x: number; hp: number; state: string }[];
+  /** Estado del bando enemigo: sirve para comprobar que su economia es real. */
+  enemy: { supplies: number; population: number; stance: Stance; harvested: number };
+  /** Depositos del mapa con lo que les queda. */
+  nodes: { id: number; team: string; x: number; amount: number; capacity: number }[];
   enemyStructureHp: number;
   playerStructureHp: number;
   ended: { won: boolean; loot: number } | null;
@@ -43,6 +49,8 @@ export interface DebugApi {
   getState(): DebugState;
   issue(command: DebugCommand): void;
   setTimeScale(scale: number): void;
+  /** Marca una dificultad en el menu sin tener que pulsar el boton. */
+  setDifficulty(id: string): void;
 }
 
 declare global {
@@ -63,6 +71,7 @@ export function installDebugBridge(game: Game): void {
         population: team.population,
         populationMax: team.populationMax,
         stance: team.stance,
+        difficulty: game.getDifficulty(),
         elapsed: world.elapsed,
         fps: Math.round(game.getFps()),
         interactive: game.isInteractive(),
@@ -76,6 +85,19 @@ export function installDebugBridge(game: Game): void {
             hp: Math.round(u.health.hp),
             state: u.state,
           })),
+        enemy: {
+          supplies: world.teams.VC.supplies,
+          population: world.teams.VC.population,
+          stance: world.teams.VC.stance,
+          harvested: world.teams.VC.harvested,
+        },
+        nodes: world.nodes.map((n) => ({
+          id: n.id,
+          team: n.team,
+          x: n.x,
+          amount: Math.round(n.amount),
+          capacity: n.capacity,
+        })),
         enemyStructureHp: world.structureOf('VC')?.hp ?? 0,
         playerStructureHp: world.structureOf('US')?.hp ?? 0,
         ended: world.outcome,
@@ -90,13 +112,20 @@ export function installDebugBridge(game: Game): void {
         case 'attack': session.setStance('attack'); break;
         case 'defend': session.setStance('defend'); break;
         case 'retreat': session.setStance('retreat'); break;
-        case 'skip_briefing': game.skipBriefing(); break;
+        case 'skip_briefing': game.skipMenu(); break;
         case 'restart': game.restart(); break;
       }
     },
 
     setTimeScale(scale: number): void {
       game.setTimeScale(scale);
+    },
+
+    setDifficulty(id: string): void {
+      if (!isDifficultyId(id)) {
+        throw new Error(`Dificultad desconocida: "${id}"`);
+      }
+      game.selectDifficulty(id);
     },
   };
 

@@ -1,3 +1,5 @@
+import type { DifficultyId } from '../domain/balance/difficulty.js';
+
 /**
  * Progreso persistente de la campaña.
  *
@@ -7,6 +9,14 @@
 export interface Progress {
   /** Nivel más alto desbloqueado. */
   unlockedLevel: number;
+  /**
+   * Última dificultad elegida en el menú.
+   *
+   * Se guarda para que el menú abra ya en la que el jugador venía jugando: en
+   * una partida de tres minutos, volver a marcar Imposible cada vez sería una
+   * fricción absurda.
+   */
+  difficulty: DifficultyId;
   /** `true` cuando se han capturado los planos del tanque (premio del nivel 1). */
   tankBlueprintUnlocked: boolean;
   /** Botín acumulado que se traslada al nivel siguiente. */
@@ -21,6 +31,7 @@ export interface Progress {
 export function initialProgress(): Progress {
   return {
     unlockedLevel: 1,
+    difficulty: 'normal',
     tankBlueprintUnlocked: false,
     loot: 0,
     bestTimeSec: {},

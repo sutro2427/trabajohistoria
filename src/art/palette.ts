@@ -98,6 +98,21 @@ export const US_HARVESTER_PALETTE: SoldierPalette = Object.freeze({
   accent: PALETTE.mud,
 });
 
+/**
+ * Porteador vietnamita: el guerrillero sin arma y con la ropa comida por el
+ * barro. Mismo cuerpo, misma silueta de bando, oficio distinto — se distingue
+ * del combatiente por el saco y por el tono desvaído, no por ser otro dibujo.
+ */
+export const VC_HARVESTER_PALETTE: SoldierPalette = Object.freeze({
+  uniform: hex('#4a4a3a'),
+  uniformShade: hex('#2e2e24'),
+  skin: PALETTE.skinVc,
+  skinShade: PALETTE.skinVcShade,
+  gear: hex('#8a7c52'),
+  weapon: PALETTE.brown,
+  accent: PALETTE.mud,
+});
+
 /** Guerrillero vietnamita: ropa oscura, sombrero cónico, más delgado. */
 export const VC_SOLDIER_PALETTE: SoldierPalette = Object.freeze({
   uniform: hex('#3d4438'),

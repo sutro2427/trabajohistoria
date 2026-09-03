@@ -1,3 +1,4 @@
+import { isDifficultyId } from '../domain/balance/difficulty.js';
 import type { IProgressRepository } from './IProgressRepository.js';
 import { initialProgress, type Progress } from './Progress.js';
 
@@ -20,7 +21,11 @@ export class LocalStorageProgressRepository implements IProgressRepository {
       const parsed = JSON.parse(raw) as Partial<Progress>;
       // Se fusiona con los valores por defecto: así una versión guardada por
       // una build antigua, a la que le falten campos nuevos, sigue siendo válida.
-      return { ...initialProgress(), ...parsed };
+      const merged = { ...initialProgress(), ...parsed };
+      // El disco es entrada no confiable: una dificultad que ya no exista
+      // (o un valor manipulado a mano) haría fallar el catálogo al arrancar.
+      if (!isDifficultyId(merged.difficulty)) merged.difficulty = 'normal';
+      return merged;
     } catch {
       return initialProgress();
     }

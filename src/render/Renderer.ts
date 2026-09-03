@@ -9,6 +9,7 @@ import type { FxSystem } from './FxSystem.js';
 import type { SpriteAtlas, Sprite } from './SpriteAtlas.js';
 import { Rng } from '../core/Rng.js';
 import { lerp } from '../core/math.js';
+import { SUPPLY_DROP_STAGES } from '../art/SpriteBaker.js';
 
 /**
  * ============================================================================
@@ -131,11 +132,20 @@ export class Renderer {
     const items: ScenerySprite[] = [];
     const props = this.atlas.props;
 
+    // Coordenadas de los depósitos, deducidas del mismo balance que usa la
+    // simulación: hay que dejarlos despejados o la vegetación taparía justo la
+    // información que el jugador necesita leer de un vistazo.
+    const nodeX: number[] = [];
+    for (const offset of WORLD.resourceOffsets) {
+      nodeX.push(WORLD.usBaseX + offset, WORLD.vcBaseX - offset);
+    }
+
     for (let x = 60; x < WORLD.battlefieldWidth - 40; x += rng.int(38, 96)) {
       // Se despeja el entorno inmediato de ambas bases para no tapar la acción.
       const nearBase =
         Math.abs(x - WORLD.usBaseX) < 70 || Math.abs(x - WORLD.vcBaseX) < 70;
       if (nearBase) continue;
+      if (nodeX.some((nx) => Math.abs(x - nx) < 26)) continue;
 
       const roll = rng.next();
       let sprite: Sprite | undefined;
@@ -167,9 +177,12 @@ export class Renderer {
   /**
    * Dibuja un fotograma completo.
    *
-   * @param alpha Factor de interpolación entre el paso anterior y el actual.
+   * @param alpha     Factor de interpolación entre el paso anterior y el actual.
+   * @param menuTime  Segundos transcurridos en el menú principal, o `null`
+   *                  durante la partida. Cuando llega un valor se añade la
+   *                  capa atmosférica del menú (helicópteros y humo).
    */
-  render(world: World, alpha: number): void {
+  render(world: World, alpha: number, menuTime: number | null = null): void {
     const ctx = this.ctx;
     const cam = this.camera.x;
 
@@ -179,7 +192,9 @@ export class Renderer {
     ctx.translate(0, Math.round(this.camera.shakeY));
 
     this.drawBackground(cam);
+    if (menuTime !== null) this.drawMenuAtmosphere(cam, menuTime);
     this.drawScenery(cam);
+    this.drawResourceNodes(world, cam);
     this.drawStructures(world, cam);
     this.drawUnits(world, cam, alpha);
     this.drawProjectiles(world, cam, alpha);
@@ -262,6 +277,65 @@ export class Renderer {
     }
   }
 
+  /**
+   * Capa atmosférica del menú principal: humo en el horizonte y una patrulla
+   * de helicópteros cruzando el valle.
+   *
+   * Todo se deriva del tiempo transcurrido, sin estado propio ni partículas:
+   * el menú no debe pagar un sistema de simulación para tener vida. Y se
+   * mantiene deliberadamente escaso —tres siluetas y dos columnas de humo—
+   * porque detrás va un panel de texto que tiene que poder leerse.
+   */
+  private drawMenuAtmosphere(cam: number, t: number): void {
+    const ctx = this.ctx;
+
+    // --- Columnas de humo sobre la línea de selva ---
+    // Se dibujan con paralaje de las capas lejanas para que pertenezcan al
+    // fondo y no parezcan pegadas al cristal.
+    const smokeParallax = 0.45;
+    for (const [originX, seed] of [
+      [WORLD.usBaseX + 260, 0],
+      [WORLD.vcBaseX - 300, 3.1],
+    ] as const) {
+      const baseX = originX - cam * smokeParallax;
+      for (let i = 0; i < 7; i++) {
+        // Cada bocanada nace abajo y se disipa al subir, con un vaivén lento.
+        const life = ((t * 0.16 + i / 7 + seed) % 1);
+        const y = WORLD.groundY - 70 - life * 78;
+        const drift = Math.sin(life * 5 + seed) * 9;
+        const radius = 3 + life * 7;
+        ctx.globalAlpha = 0.22 * (1 - life);
+        ctx.fillStyle = `rgb(${PALETTE.smoke.r},${PALETTE.smoke.g},${PALETTE.smoke.b})`;
+        ctx.beginPath();
+        ctx.arc(Math.round(baseX + drift), Math.round(y), radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    // --- Patrulla de helicópteros ---
+    const heli = this.atlas.props['heli'];
+    if (!heli) return;
+
+    const patrol: readonly (readonly [number, number, number])[] = [
+      // [altura, velocidad px/s, desfase 0..1]
+      [34, 22, 0.0],
+      [58, 15, 0.45],
+      [22, 30, 0.75],
+    ];
+    // Recorrido virtual algo mayor que la pantalla: entran y salen de cuadro.
+    const span = WORLD.logicalWidth + heli.width * 3;
+
+    for (const [y, speed, phase] of patrol) {
+      // Vuelan de derecha a izquierda, hacia la posición estadounidense.
+      const progress = (t * speed) / span + phase;
+      const x = span - ((progress % 1) * span) - heli.width;
+      ctx.globalAlpha = 0.55;
+      ctx.drawImage(heli, Math.round(x), Math.round(y));
+    }
+    ctx.globalAlpha = 1;
+  }
+
   private drawScenery(cam: number): void {
     const ctx = this.ctx;
     for (const item of this.scenery) {
@@ -301,15 +375,32 @@ export class Renderer {
         this.drawTinted(sprite, sx, sy, '#fff4d0', Math.min(0.65, s.hitFlash * 7));
       }
     }
+  }
 
-    // Zona de acopio: el destino de los recolectores.
-    const drop = this.atlas.structures['supply_drop'];
-    const dropX = WORLD.usBaseX + (this.defOf('us_harvester').harvest?.nodeOffsetX ?? -90);
-    if (drop && this.camera.isVisible(dropX, drop.width)) {
+  /**
+   * Depósitos de suministros, dibujados según lo que les queda.
+   *
+   * El sprite se elige por tramos y no de forma continua porque el pixel art
+   * no admite medias tintas: tres cajas, dos, una, ninguna. Cuatro estados
+   * discretos que el jugador distingue de un vistazo desde el otro extremo de
+   * la pantalla, que es toda la información que necesita para decidir si le
+   * conviene defender ese bolsillo o ir preparando el siguiente.
+   */
+  private drawResourceNodes(world: World, cam: number): void {
+    const ctx = this.ctx;
+    for (const node of world.nodes) {
+      const ratio = node.capacity > 0 ? node.amount / node.capacity : 0;
+      const stage =
+        node.amount <= 0
+          ? 0
+          : Math.max(1, Math.min(SUPPLY_DROP_STAGES, Math.ceil(ratio * SUPPLY_DROP_STAGES)));
+      const sprite = this.atlas.structures[`supply_drop_${stage}`];
+      if (!sprite || !this.camera.isVisible(node.x, sprite.width)) continue;
+
       ctx.drawImage(
-        drop,
-        Math.round(dropX - cam - drop.width * 0.5),
-        Math.round(WORLD.groundY - drop.height + 2),
+        sprite,
+        Math.round(node.x - cam - sprite.width * 0.5),
+        Math.round(WORLD.groundY - sprite.height + 2),
       );
     }
   }

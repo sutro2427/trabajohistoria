@@ -157,35 +157,61 @@ export function drawVcBunker(rng: Rng): PixelBuffer {
 }
 
 /**
- * Zona de acopio: el punto al que van los recolectores.
+ * Depósito de suministros: el punto al que van los recolectores.
  *
  * Cajas lanzadas en paracaídas, con el paño todavía enredado. Es el
  * equivalente temático de la veta de oro de Stick War.
+ *
+ * Se hornea en cuatro estados de agotamiento (`crates` de 3 a 0) porque los
+ * depósitos son finitos y el jugador necesita **verlo** sin leer un número: un
+ * bolsillo con tres cajas es una economía sana, uno con el paracaídas vacío es
+ * la señal de que toca desplazarse. Es la misma información que un depósito
+ * medio picado en Stick War, y llega igual de rápido.
+ *
+ * @param crates Cajas que quedan en pie, de 3 (lleno) a 0 (agotado).
  */
-export function drawSupplyDrop(rng: Rng): PixelBuffer {
+export function drawSupplyDrop(rng: Rng, crates = 3): PixelBuffer {
   const buf = new PixelBuffer(38, 30);
   const groundY = 29;
+  const remaining = Math.max(0, Math.min(3, Math.round(crates)));
 
-  // Paracaídas desinflado sobre el suelo.
-  buf.ellipse(12, groundY - 10, 11, 6, shade(PALETTE.sand, 0.9));
-  buf.ellipse(12, groundY - 9, 10, 5, PALETTE.sand);
+  // Paracaídas desinflado sobre el suelo. Se va deshinchando con el depósito:
+  // cuando ya no queda carga, el paño queda plano contra el suelo.
+  const canopyLift = remaining === 0 ? 4 : 9 + remaining;
+  buf.ellipse(12, groundY - canopyLift - 1, 11, remaining === 0 ? 3 : 6, shade(PALETTE.sand, 0.9));
+  buf.ellipse(12, groundY - canopyLift, 10, remaining === 0 ? 2 : 5, PALETTE.sand);
   buf.hLine(2, 22, groundY - 5, shade(PALETTE.sand, 0.7));
-  // Cuerdas del paracaídas hacia la carga.
-  buf.line(6, groundY - 6, 16, groundY - 12, PALETTE.khaki);
-  buf.line(20, groundY - 6, 18, groundY - 12, PALETTE.khaki);
 
-  // Pila de cajas de suministros, en varios tonos de madera.
-  const crates: readonly [number, number, number, number][] = [
+  if (remaining > 0) {
+    // Cuerdas del paracaídas hacia la carga.
+    buf.line(6, groundY - 6, 16, groundY - 12, PALETTE.khaki);
+    buf.line(20, groundY - 6, 18, groundY - 12, PALETTE.khaki);
+  }
+
+  // Pila de cajas, de abajo arriba: se retiran en orden inverso, así que la
+  // silueta baja de forma legible en lugar de agujerearse por el medio.
+  const crateSlots: readonly [number, number, number, number][] = [
     [16, groundY - 7, 9, 7],
     [25, groundY - 6, 8, 6],
     [19, groundY - 13, 8, 6],
   ];
-  for (const [x, y, w, h] of crates) {
+  for (let i = 0; i < crateSlots.length; i++) {
+    const slot = crateSlots[i] as [number, number, number, number];
+    const [x, y, w, h] = slot;
+    // El generador se consume siempre, llenas o no las cajas: así el aspecto de
+    // un depósito lleno es idéntico en las cuatro variantes horneadas.
     const tone = rng.chance(0.5) ? PALETTE.brown : PALETTE.brownLight;
+    if (i >= remaining) continue;
     buf.rect(x, y, w, h, tone);
     buf.rectOutline(x, y, w, h, PALETTE.brownDark);
     // Fleje metálico de la caja.
     buf.hLine(x + 1, x + w - 2, y + Math.floor(h / 2), PALETTE.khaki);
+  }
+
+  if (remaining === 0) {
+    // Palés vacíos: queda el rastro de que ahí *hubo* suministros.
+    buf.rect(17, groundY - 3, 12, 2, shade(PALETTE.brownDark, 1.1));
+    buf.hLine(17, 28, groundY - 3, PALETTE.brown);
   }
 
   buf.outline(PALETTE.outline);

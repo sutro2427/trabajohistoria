@@ -1,5 +1,5 @@
 import type { Stance, TeamId } from '../balance/types.js';
-import { requestState } from '../world/Entity.js';
+import { applyStance } from '../world/stance.js';
 import type { World } from '../world/World.js';
 import type { ICommand } from './ICommand.js';
 
@@ -24,30 +24,9 @@ export class SetStanceCommand implements ICommand {
   ) {}
 
   execute(world: World): void {
-    const team = world.teams[this.team];
-    if (team.stance === this.stance) return;
-
-    team.stance = this.stance;
-
-    // Se saca a las unidades de su estado actual para que reevalúen de
-    // inmediato. Sin esto, una unidad esperando en `idle` tardaría hasta un
-    // paso entero en reaccionar y la orden se sentiría con retardo.
-    for (const unit of world.units) {
-      if (!unit.alive || unit.team !== this.team) continue;
-      // Ni los muertos ni los aturdidos interrumpen su estado.
-      if (unit.state === 'die' || unit.state === 'hit') continue;
-      // Los recolectores solo cambian de rutina para replegarse; en cualquier
-      // otra postura siguen produciendo, que es su trabajo.
-      const isHarvesting =
-        unit.state === 'toNode' ||
-        unit.state === 'gathering' ||
-        unit.state === 'returning' ||
-        unit.state === 'depositing';
-      if (isHarvesting && this.stance !== 'retreat') continue;
-
-      requestState(unit, 'idle');
-    }
-
-    world.bus.emit('stance:changed', { team: this.team, stance: this.stance });
+    // La aplicación vive en `world/stance.ts` porque el director de la IA hace
+    // exactamente lo mismo: dos copias de esta regla ya se desincronizaron una
+    // vez y le costaron la economía al enemigo.
+    applyStance(world, this.team, this.stance);
   }
 }

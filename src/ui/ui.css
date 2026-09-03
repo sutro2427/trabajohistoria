@@ -326,3 +326,152 @@ html, body {
   .toast { animation: none; }
   .btn:active:not(:disabled) { transform: none; }
 }
+
+/* --------------------------------------------------------------------------
+   Menú principal
+   El panel va sobre el campo de batalla en movimiento (selva, humo y
+   helicópteros los pinta el canvas), así que el fondo es más translúcido que
+   el de las pantallas de resultado: la idea es que se vea el juego detrás.
+   -------------------------------------------------------------------------- */
+
+.menu-screen {
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(8, 14, 10, 0.35), rgba(8, 14, 10, 0.9) 78%);
+  align-items: center;
+}
+
+.menu-panel {
+  width: min(30em, 100%);
+  text-align: center;
+  padding: clamp(10px, 2.4vw, 26px) clamp(12px, 3vw, 32px);
+  border: 2px solid var(--olive-dark);
+  border-top: 3px solid var(--khaki);
+  background: linear-gradient(180deg, rgba(26, 34, 20, 0.9), rgba(12, 18, 11, 0.94));
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+}
+
+.menu-eyebrow {
+  margin: 0 0 0.5em;
+  font-size: clamp(8px, 1.1vw, 12px);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--olive-light);
+}
+
+/* El título es la pieza de identidad: bloque compacto, tipografía ancha y
+   una sombra dura de un solo píxel, que es como se sombrea en pixel art. */
+.menu-title {
+  margin: 0 0 0.55em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1em;
+  line-height: 1;
+}
+
+.menu-title-main {
+  font-size: clamp(20px, 4.4vw, 42px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sand);
+  text-shadow: 2px 2px 0 var(--outline), 4px 4px 0 rgba(0, 0, 0, 0.45);
+}
+
+/* El año, en ámbar y con filetes a los lados: la marca de la operación. */
+.menu-title-year {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  font-size: clamp(11px, 1.9vw, 19px);
+  letter-spacing: 0.5em;
+  text-indent: 0.5em;
+  color: var(--amber);
+  text-shadow: 1px 1px 0 var(--outline);
+}
+
+.menu-title-year::before,
+.menu-title-year::after {
+  content: "";
+  width: clamp(18px, 4vw, 46px);
+  height: 2px;
+  background: var(--khaki);
+}
+
+.menu-brief {
+  margin: 0 0 1.1em;
+  font-size: clamp(9px, 1.25vw, 13px);
+  line-height: 1.6;
+  color: var(--sand);
+  white-space: pre-line;
+  opacity: 0.9;
+}
+
+.menu-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.8em 0;
+  border-top: 1px solid var(--olive-dark);
+  border-bottom: 1px solid var(--olive-dark);
+  margin-bottom: 1em;
+}
+
+.menu-difficulties { display: flex; gap: clamp(4px, 0.9vw, 10px); }
+
+.btn-difficulty {
+  min-width: 6em;
+  padding: 0.45em 0.9em;
+  font-size: clamp(9px, 1.3vw, 14px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Mismo lenguaje que la orden activa de la barra de mando: si el jugador ya
+   sabe leer "esto está seleccionado" abajo, lo sabe leer aquí. */
+.btn-difficulty.is-active {
+  background: linear-gradient(180deg, var(--khaki) 0%, var(--brown) 100%);
+  border-color: var(--amber);
+  color: #1a1a12;
+  font-weight: 700;
+}
+
+/* La confirmación explícita de qué dificultad se va a jugar. */
+.menu-note {
+  margin: 0;
+  min-height: 2.4em;
+  font-size: clamp(8px, 1.15vw, 12px);
+  line-height: 1.5;
+  color: var(--olive-light);
+}
+.menu-note b {
+  color: var(--amber);
+  letter-spacing: 0.1em;
+}
+
+.menu-play {
+  padding: 0.65em 2.6em;
+  font-size: clamp(12px, 1.9vw, 19px);
+  text-transform: uppercase;
+}
+
+.menu-foot {
+  margin: 0.9em 0 0;
+  font-size: clamp(8px, 1.05vw, 11px);
+  letter-spacing: 0.06em;
+  color: var(--olive-light);
+  opacity: 0.85;
+}
+
+/* Etiqueta corta dentro de una ficha del HUD ("Población 17 / 50"). */
+.hud-key {
+  font-size: 0.78em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--olive-light);
+}
+
+/* En pantallas muy estrechas la etiqueta se cae antes que la cifra. */
+@media (max-width: 520px) {
+  .hud-key { display: none; }
+}

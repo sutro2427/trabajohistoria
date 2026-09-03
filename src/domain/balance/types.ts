@@ -16,14 +16,15 @@ export type Stance = 'attack' | 'defend' | 'retreat';
 /** Rol funcional de una unidad; decide qué componentes recibe al crearse. */
 export type UnitRole = 'infantry' | 'harvester' | 'vehicle';
 
-/** Parámetros del ciclo de recolección (solo unidades con rol `harvester`). */
+/**
+ * Parámetros del ciclo de recolección (solo unidades con rol `harvester`).
+ *
+ * La *distancia* al depósito ya no vive aquí: los depósitos son entidades del
+ * mundo (`ResourceNode`) repartidas por el mapa, y cada recolector elige el
+ * suyo. Lo que queda en la definición de la unidad es únicamente el ritmo con
+ * el que trabaja, que es lo que de verdad la caracteriza.
+ */
 export interface HarvestDef {
-  /**
-   * Desplazamiento en X desde la base hasta la zona de acopio.
-   * Negativo para EE.UU.: el recolector sale hacia el borde del mapa, a
-   * retaguardia, tal y como el minero de Stick War va a su veta.
-   */
-  readonly nodeOffsetX: number;
   /** Segundos por cada unidad de suministro recogida (una animación de acopio). */
   readonly gatherTime: number;
   /** Suministros que carga antes de volver a depositar. */
@@ -97,47 +98,29 @@ export interface StructureDef {
   readonly height: number;
 }
 
-/** Parámetros de la IA enemiga para un nivel. */
-export interface AiProfile {
-  /**
-   * Renta virtual por segundo. La IA no gestiona recolectores: acumula
-   * suministros a ritmo fijo. Elimina toda una clase de bugs y hace que el
-   * balance sea predecible y ajustable desde un solo número.
-   */
-  readonly incomePerSec: number;
-  readonly firstWaveAt: number;
-  readonly waveInterval: number;
-  readonly waveSize: number;
-  /** Cuánto crece la oleada en cada tanda. */
-  readonly waveSizeGrowth: number;
-  readonly maxConcurrent: number;
-  /** Tope duro de unidades generadas en todo el nivel: garantiza que termina. */
-  readonly maxTotalSpawned: number;
-  /** Ataca solo si su poder ≥ este factor × el poder del jugador. */
-  readonly aggressionRatio: number;
-  /** Segundos de empuje antes de reevaluar la situación. */
-  readonly pushDuration: number;
-  /** Si el jugador cruza esta distancia de su base, la IA se repliega a defender. */
-  readonly defenseLineOffset: number;
-}
-
 /** Definición de un nivel de la campaña. */
 export interface LevelDef {
   readonly id: number;
   readonly title: string;
-  /** Texto de sesión informativa mostrado antes de empezar. */
+  /** Texto de sesión informativa mostrado en el menú principal. */
   readonly briefing: string;
   /** Descripción corta del objetivo, para el HUD. */
   readonly objective: string;
+  /**
+   * Suministros iniciales. Los reciben **ambos** bandos: la IA juega con la
+   * misma economía que el jugador, no con una renta regalada.
+   */
   readonly startingSupplies: number;
+  /** Tope de población, idéntico para los dos bandos. */
   readonly populationMax: number;
-  /** Unidades enemigas presentes al comenzar (guarnición). */
+  /** Unidades enemigas presentes al comenzar (guarnición de la posición). */
   readonly garrison: readonly string[];
   /** Unidades que el jugador puede producir en este nivel. */
   readonly buildable: readonly string[];
+  /** Unidades que la IA puede producir. Mismo mecanismo de compra que el jugador. */
+  readonly enemyBuildable: readonly string[];
   readonly playerStructure: string;
   readonly enemyStructure: string;
-  readonly ai: AiProfile;
   /** Botín máximo que se traslada al nivel siguiente. */
   readonly maxLoot: number;
 }

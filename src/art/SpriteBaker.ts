@@ -5,6 +5,7 @@ import { CLIPS, type AnimClip, type ClipName } from './AnimationCatalog.js';
 import {
   US_HARVESTER_PALETTE,
   US_SOLDIER_PALETTE,
+  VC_HARVESTER_PALETTE,
   VC_SOLDIER_PALETTE,
 } from './palette.js';
 import { drawSoldier, type SoldierSkin } from './recipes/SoldierRecipe.js';
@@ -19,6 +20,7 @@ import {
   drawBurntStump,
   drawBush,
   drawCrater,
+  drawHelicopter,
   drawPalmTree,
   drawSandbagWall,
 } from './recipes/PropRecipe.js';
@@ -49,6 +51,12 @@ import {
 
 /** Semilla maestra del arte. Cambiarla regenera todo el aspecto del juego. */
 export const ART_SEED = 20250903;
+
+/**
+ * Cajas visibles en un depósito lleno. Marca cuántas variantes de agotamiento
+ * se hornean: `supply_drop_0` (vacío) hasta `supply_drop_3` (lleno).
+ */
+export const SUPPLY_DROP_STAGES = 3;
 
 /** Fotogramas de un clip, en las dos orientaciones. */
 export interface BakedClip {
@@ -113,6 +121,20 @@ const SKINS: Readonly<Record<string, SoldierSkin>> = Object.freeze({
     dirtiness: 0.35,
     build: 0.2,
   },
+  /**
+   * Porteador vietnamita: el guerrillero con saco en lugar de fusil.
+   * Conserva el sombrero cónico —es lo que identifica al bando de un vistazo—
+   * y pierde el arma, que es lo que identifica al oficio.
+   */
+  vc_harvester: {
+    palette: VC_HARVESTER_PALETTE,
+    headgear: 'conical',
+    hasBackpack: false,
+    hasWeapon: false,
+    hasSack: true,
+    dirtiness: 0.7,
+    build: 0.15,
+  },
 });
 
 /** Clips que necesita cada rol. No se hornea lo que nunca se va a usar. */
@@ -158,6 +180,7 @@ export function bakeArt(seed: number = ART_SEED): BakedArt {
     us_rifleman: bakeUnit(SKINS['us_rifleman'] as SoldierSkin, INFANTRY_CLIPS, seed + 100),
     us_harvester: bakeUnit(SKINS['us_harvester'] as SoldierSkin, HARVESTER_CLIPS, seed + 200),
     vc_guerrilla: bakeUnit(SKINS['vc_guerrilla'] as SoldierSkin, INFANTRY_CLIPS, seed + 300),
+    vc_harvester: bakeUnit(SKINS['vc_harvester'] as SoldierSkin, HARVESTER_CLIPS, seed + 350),
   };
 
   const structureRng = new Rng(seed + 400);
@@ -165,8 +188,14 @@ export function bakeArt(seed: number = ART_SEED): BakedArt {
     us_firebase: drawUsFirebase(structureRng),
     vc_outpost: drawVcOutpost(structureRng),
     vc_bunker: drawVcBunker(structureRng),
-    supply_drop: drawSupplyDrop(structureRng),
   };
+
+  // Los cuatro estados de un depósito. Cada uno parte de un generador recién
+  // sembrado con la misma semilla para que sean literalmente la misma pila de
+  // cajas a la que le van faltando piezas, y no cuatro pilas distintas.
+  for (let crates = 0; crates <= SUPPLY_DROP_STAGES; crates++) {
+    structures[`supply_drop_${crates}`] = drawSupplyDrop(new Rng(seed + 450), crates);
+  }
 
   const propRng = new Rng(seed + 500);
   const props: Record<string, PixelBuffer> = {
@@ -179,6 +208,8 @@ export function bakeArt(seed: number = ART_SEED): BakedArt {
     bush_c: drawBush(propRng),
     crater: drawCrater(propRng),
     stump: drawBurntStump(propRng),
+    // Solo se usa en el menú principal.
+    heli: drawHelicopter(),
   };
 
   // El cielo se hornea con la altura completa hasta la línea de suelo: si se

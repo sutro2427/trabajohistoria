@@ -131,3 +131,45 @@ export function drawBurntStump(rng: Rng): PixelBuffer {
   buf.outline(PALETTE.outline);
   return buf;
 }
+
+/**
+ * Silueta de helicóptero de transporte, vista de perfil.
+ *
+ * Solo se usa en el menú principal, sobrevolando el horizonte. Va resuelta
+ * como silueta oscura y no como sprite detallado a propósito: a esa distancia
+ * la lectura la da el contorno —morro caído, botalón largo, rotor ancho— y
+ * cualquier detalle interior a esta escala se convertiría en ruido.
+ */
+export function drawHelicopter(): PixelBuffer {
+  const buf = new PixelBuffer(34, 15);
+  const body = PALETTE.oliveDark;
+  const rotorY = 2;
+
+  // Cabina y fuselaje: más alto delante, afilándose hacia la cola.
+  buf.ellipse(11, 8, 7, 4, body);
+  buf.rect(4, 6, 9, 5, body);
+  // Morro inclinado.
+  buf.line(3, 9, 6, 6, body);
+  buf.line(3, 10, 7, 10, body);
+
+  // Botalón de cola y estabilizador.
+  buf.rect(17, 7, 12, 2, body);
+  buf.vLine(29, 3, 9, body);
+  buf.hLine(27, 32, 4, body);
+
+  // Rotor de cola.
+  buf.vLine(31, 5, 9, shade(body, 1.4));
+
+  // Mástil y pala principal: la línea que hace que se lea como helicóptero.
+  buf.vLine(11, rotorY + 1, 5, body);
+  buf.hLine(1, 24, rotorY, shade(body, 1.5));
+  buf.hLine(2, 23, rotorY + 1, body);
+
+  // Patines de aterrizaje.
+  buf.hLine(6, 17, 13, body);
+  buf.vLine(8, 11, 13, body);
+  buf.vLine(15, 11, 13, body);
+
+  buf.outline(PALETTE.outline);
+  return buf;
+}

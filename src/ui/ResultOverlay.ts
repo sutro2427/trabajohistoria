@@ -1,4 +1,5 @@
 import { formatTime } from '../core/math.js';
+import { getAiProfile, type DifficultyId } from '../domain/balance/difficulty.js';
 import { requireElement } from './Hud.js';
 
 /** Contenido de la pantalla superpuesta. */
@@ -71,28 +72,39 @@ export class ResultOverlay {
   }
 
   /** Pantalla de victoria del nivel 1: se capturan los planos del tanque. */
-  static victory(loot: number, elapsed: number, kills: number): OverlayContent {
+  static victory(
+    loot: number,
+    elapsed: number,
+    kills: number,
+    difficulty: DifficultyId,
+  ): OverlayContent {
     return {
       title: 'Posición tomada',
       body:
         'El puesto de mando ha caído. Entre los restos aparecen los planos de un blindado.\n' +
         'Los suministros capturados viajan contigo a la siguiente operación.',
       stats: [
+        // La dificultad forma parte del resultado: ganar en Imposible y ganar
+        // en Normal no son la misma partida, y el marcador debe decirlo.
+        { label: 'Dificultad', value: getAiProfile(difficulty).label },
         { label: 'Botín', value: `${loot} suministros` },
         { label: 'Tiempo', value: formatTime(elapsed) },
         { label: 'Bajas enemigas', value: String(kills) },
       ],
-      actionLabel: 'Continuar',
+      actionLabel: 'Volver al menú',
     };
   }
 
   /** Pantalla de derrota. */
-  static defeat(elapsed: number, reason: string): OverlayContent {
+  static defeat(elapsed: number, reason: string, difficulty: DifficultyId): OverlayContent {
     return {
       title: 'Operación fracasada',
       body: reason,
-      stats: [{ label: 'Tiempo', value: formatTime(elapsed) }],
-      actionLabel: 'Reintentar',
+      stats: [
+        { label: 'Dificultad', value: getAiProfile(difficulty).label },
+        { label: 'Tiempo', value: formatTime(elapsed) },
+      ],
+      actionLabel: 'Volver al menú',
     };
   }
 }

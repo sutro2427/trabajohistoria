@@ -19,6 +19,16 @@ export interface Entity {
   /** Segundos que el cadáver sigue visible antes de desaparecer. */
   corpseTimer: number;
 
+  /**
+   * Fila de formación (0..`WORLD.formationSlots`-1).
+   *
+   * Se asigna al crear la unidad y no cambia. Cada ranura retrasa el punto de
+   * destino unos píxeles, de modo que una escuadra de treinta soldados forma
+   * escalones legibles en lugar de converger toda a la misma coordenada y
+   * resolverlo a empujones.
+   */
+  readonly formationSlot: number;
+
   readonly transform: Transform;
   readonly health: Health;
   readonly anim: AnimState;

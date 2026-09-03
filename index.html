@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <meta name="description" content="Operación Delta — juego de estrategia en tiempo real pixel art ambientado en la Guerra de Vietnam." />
-    <title>Operación Delta</title>
+    <meta name="description" content="Mekong Front: 1968 — juego de estrategia en tiempo real pixel art ambientado en la Guerra de Vietnam." />
+    <title>Mekong Front: 1968</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/src/ui/ui.css" />
   </head>
@@ -23,7 +23,8 @@
             </span>
             <span class="hud-chip" title="Población actual / máxima">
               <span class="icon icon-pop" aria-hidden="true"></span>
-              <span data-testid="hud-population"><span id="hud-pop">0</span>/<span id="hud-pop-max">0</span></span>
+              <span class="hud-key">Población</span>
+              <span data-testid="hud-population"><span id="hud-pop">0</span> / <span id="hud-pop-max">0</span></span>
             </span>
           </div>
           <div class="hud-group hud-right">
@@ -39,11 +40,11 @@
             <div class="bar-buttons">
               <button type="button" class="btn btn-buy" id="btn-buy-soldier" data-testid="btn-buy-soldier">
                 <span class="btn-name">Soldado</span>
-                <span class="btn-cost"><span class="icon icon-supply" aria-hidden="true"></span>3</span>
+                <span class="btn-cost"><span class="icon icon-supply" aria-hidden="true"></span>5</span>
               </button>
               <button type="button" class="btn btn-buy" id="btn-buy-harvester" data-testid="btn-buy-harvester">
                 <span class="btn-name">Recolector</span>
-                <span class="btn-cost"><span class="icon icon-supply" aria-hidden="true"></span>4</span>
+                <span class="btn-cost"><span class="icon icon-supply" aria-hidden="true"></span>6</span>
               </button>
             </div>
           </div>
@@ -66,10 +67,33 @@
           </div>
         </footer>
 
-        <!-- ===== Capa de mensajes: carga, victoria, derrota ===== -->
+        <!-- ===== Menú principal ===== -->
+        <div id="main-menu" class="screen-overlay menu-screen" data-testid="main-menu" hidden>
+          <div class="menu-panel">
+            <p class="menu-eyebrow">Valle de Ia Drang · Vietnam del Sur</p>
+            <h1 class="menu-title">
+              <span class="menu-title-main">Mekong Front</span>
+              <span class="menu-title-year">1968</span>
+            </h1>
+
+            <p class="menu-brief" id="menu-brief" data-testid="menu-brief"></p>
+
+            <div class="menu-block">
+              <span class="bar-label">Dificultad</span>
+              <!-- Los botones los genera MainMenu a partir del catálogo de perfiles. -->
+              <div class="menu-difficulties" id="menu-difficulties" role="radiogroup" aria-label="Dificultad"></div>
+              <p class="menu-note" id="menu-note" data-testid="menu-note"></p>
+            </div>
+
+            <button type="button" class="btn btn-primary menu-play" id="menu-play" data-testid="btn-play">Jugar</button>
+            <p class="menu-foot" id="menu-foot"></p>
+          </div>
+        </div>
+
+        <!-- ===== Capa de mensajes: victoria y derrota ===== -->
         <div id="overlay-screen" class="screen-overlay" data-testid="overlay-screen" hidden>
           <div class="panel">
-            <h1 id="overlay-title" data-testid="overlay-title">Operación Delta</h1>
+            <h1 id="overlay-title" data-testid="overlay-title">Mekong Front: 1968</h1>
             <p id="overlay-body" data-testid="overlay-body"></p>
             <div id="overlay-stats" class="stats"></div>
             <button type="button" class="btn btn-primary" id="overlay-action" data-testid="overlay-action">Comenzar</button>

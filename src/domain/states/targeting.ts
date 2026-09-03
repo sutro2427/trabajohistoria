@@ -60,18 +60,29 @@ export function anchorFor(world: World, entity: Entity, stance: Stance): number 
   const team = world.teams[entity.team];
   const dir = advanceDirection(entity.team);
 
+  /**
+   * Retranqueo por fila. Con el tope de población en 50, si todas las unidades
+   * apuntaran a la misma coordenada la formación se resolvería a empujones y
+   * acabaría siendo una fila de medio mapa. Cuatro filas escalonadas se leen
+   * como una escuadra y ocupan una cuarta parte del frente.
+   */
+  const rank = dir * entity.formationSlot * WORLD.formationSpacing;
+
   switch (stance) {
     case 'attack': {
       // Avanzar hasta la posición enemiga.
       const target = world.structureOf(opponentOf(entity.team));
-      return target ? target.x - dir * WORLD.structureStandoff : team.baseX + dir * 900;
+      const front = target
+        ? target.x - dir * WORLD.structureStandoff
+        : team.baseX + dir * (WORLD.battlefieldWidth * 0.5);
+      return front - rank;
     }
     case 'defend':
       // Formar una línea por delante de la base propia, no encima de ella:
       // así el combate se libra en el parapeto y no dentro del campamento.
-      return team.baseX + dir * 110;
+      return team.baseX + dir * 110 - rank;
     case 'retreat':
-      return team.baseX - dir * 10;
+      return team.baseX - dir * 10 - rank;
   }
 }
 
