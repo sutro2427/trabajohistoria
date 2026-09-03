@@ -77,6 +77,19 @@ npm install
 npm run dev      # http://localhost:5173
 ```
 
+**Para probarlo desde el teléfono** (con el móvil y el ordenador en el mismo wifi):
+
+```bash
+npm run dev:lan
+```
+
+Vite imprime dos direcciones. Abre en el teléfono la que dice **Network**
+(algo como `http://192.168.1.42:5173/`), gira el móvil en horizontal y juega.
+
+> Firebase **no hace falta** para esto: sin configurar, el juego arranca en
+> modo local y la campaña completa es jugable. Lo único que falta es el panel
+> compartido entre alumnos.
+
 ### Desplegar en Netlify
 
 El repositorio ya trae `netlify.toml`. Conecta el repo desde el panel de Netlify y despliega — no hace falta configurar nada más para que el juego funcione.
