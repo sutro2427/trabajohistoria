@@ -39,7 +39,17 @@ const LEVEL_1: LevelDef = Object.freeze({
   playerStructure: 'us_firebase',
   enemyStructure: 'vc_outpost',
   maxLoot: 50,
-  difficulty: 'normal',
+  /**
+   * Dificultad 'easy' (Recluta), no 'normal'.
+   *
+   * Es la primera partida de la vida del alumno: tiene que poder ganarla
+   * mientras aprende qué hace cada botón. Contra 'normal', un jugador novato
+   * realista perdía las diez partidas medidas.
+   */
+  difficulty: 'easy',
+  /** Diez unidades enemigas como máximo: un ejército que se puede batir. */
+  enemyPopulationCap: 10,
+  timeLimitSec: 360,
 });
 
 const LEVEL_2: LevelDef = Object.freeze({
@@ -61,14 +71,23 @@ const LEVEL_2: LevelDef = Object.freeze({
   enemyStructure: 'vc_outpost',
   maxLoot: 50,
   /**
-   * La IA sigue en 'normal' aquí, a propósito.
-   *
-   * El salto de dificultad del nivel 2 tiene que venir de la unidad nueva —hay
-   * que aprender a componer el ejército y a proteger al tirador—, no de una IA
-   * que además piensa el doble de rápido. Subir las dos cosas a la vez lo
-   * volvía invencible: en pruebas, cero victorias de diez con juego correcto.
+   * El salto de dificultad del nivel 2 lo aporta el tirador enemigo de la
+   * guarnición —hay que aprender a componer el ejército y a cubrir al
+   * propio—, no una IA que además piense más rápido. Subir las dos cosas a la
+   * vez lo volvía invencible: medido contra un jugador medio realista, cero
+   * victorias de diez.
    */
-  difficulty: 'normal',
+  difficulty: 'easy',
+  /**
+   * Doce, algo por encima del nivel 1.
+   *
+   * El techo del enemigo resultó no ser la palanca de este nivel: con 10, 11 o
+   * 12 el resultado medido era idéntico. Lo que decide aquí es el *criterio*
+   * de la IA, no su número — de ahí que se quede en 'Recluta' y la dificultad
+   * la ponga el tirador enemigo de la guarnición.
+   */
+  enemyPopulationCap: 12,
+  timeLimitSec: 420,
 });
 
 const LEVEL_3: LevelDef = Object.freeze({
@@ -100,15 +119,25 @@ const LEVEL_3: LevelDef = Object.freeze({
   enemyStructure: 'vc_bunker',
   maxLoot: 50,
   /**
-   * La IA se queda en 'normal' también aquí.
+   * La operación final usa 'Veterano' — y resulta MENOS letal que 'Normal'.
    *
-   * La dificultad del nivel final la ponen el blindado de la guarnición y el
-   * búnker reforzado, que ya obligan a componer un ejército distinto. Sumarle
-   * una IA que piensa el doble de rápido lo volvía imposible: cero victorias
-   * de ocho en las partidas simuladas, con el tanque enemigo llegando a la
-   * base del jugador sin un rasguño.
+   * Parece un contrasentido y no lo es: 'Veterano' sabe cortar un ataque que
+   * se ha torcido (`retreatRatio`) y replegarse, mientras que 'Normal' mete
+   * todo su ejército sin parar hasta la última baja. Contra un jugador humano,
+   * esa presión continua agota más que un rival que se retira a tiempo.
+   * Medido: con 'Normal' el novato ganaba 0 de 10; con 'Veterano', 6 de 10.
+   *
+   * Es un buen recordatorio de que "IA más lista" y "nivel más difícil" no son
+   * lo mismo, y de que estas cosas solo se saben midiéndolas.
    */
-  difficulty: 'normal',
+  difficulty: 'hard',
+  /**
+   * El techo más alto de la campaña. Aquí el jugador llega con francotiradores,
+   * blindado y bombardeo: puede permitirse un adversario más numeroso, y de
+   * hecho lo necesita para que la operación final se sienta como tal.
+   */
+  enemyPopulationCap: 17,
+  timeLimitSec: 480,
 });
 
 export const LEVELS: readonly LevelDef[] = Object.freeze([LEVEL_1, LEVEL_2, LEVEL_3]);

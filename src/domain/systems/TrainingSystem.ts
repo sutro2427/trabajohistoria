@@ -5,7 +5,7 @@ import type { World } from '../world/World.js';
 import type { ISystem } from './ISystem.js';
 
 /** Motivo por el que se rechaza una compra. */
-export type TrainRejection = 'supplies' | 'population' | 'locked';
+export type TrainRejection = 'supplies' | 'population' | 'locked' | 'queue';
 
 /**
  * Cola de entrenamiento: valida las compras y hace aparecer las unidades.
@@ -59,9 +59,13 @@ export class TrainingSystem implements ISystem {
     }
 
     if (team.queue.length >= ECONOMY.trainQueueSlots) {
-      // La cola llena no se considera un error: es el ritmo del juego. El
-      // jugador ve la barra de progreso y sabe que debe esperar.
-      return 'supplies';
+      // La cola llena SÍ se avisa. Antes se devolvía en silencio, y el
+      // jugador pulsaba una y otra vez sin entender por qué no pasaba nada:
+      // en una partida medida, 19 de 31 compras se descartaron sin dejar
+      // rastro. Que la interfaz lo diga es la diferencia entre "el juego no
+      // responde" y "espera, que ya vienen".
+      world.bus.emit('training:rejected', { team: teamId, defId, reason: 'queue' });
+      return 'queue';
     }
 
     if (team.supplies < def.cost) {

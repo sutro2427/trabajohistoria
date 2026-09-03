@@ -55,8 +55,17 @@ export class Hud {
     this.suppliesChip.classList.remove('is-gain', 'is-loss');
   }
 
-  update(dt: number, elapsed: number): void {
-    this.timer.textContent = formatTime(elapsed);
+  update(dt: number, elapsed: number, limit?: number): void {
+    if (limit !== undefined) {
+      // Cuenta atrás: en una competencia contra el reloj, lo que importa es
+      // cuánto queda, no cuánto ha pasado.
+      const left = Math.max(0, limit - elapsed);
+      this.timer.textContent = formatTime(left);
+      // Último minuto en rojo: avisa sin necesidad de leer el número.
+      this.timer.classList.toggle('is-urgent', left <= 60);
+    } else {
+      this.timer.textContent = formatTime(elapsed);
+    }
 
     if (this.highlightTimer > 0) {
       this.highlightTimer -= dt;

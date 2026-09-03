@@ -39,6 +39,15 @@ export class VictorySystem implements ISystem {
       return;
     }
 
+    // --- Derrota por tiempo agotado ---
+    // Sin este corte, dos bandos atrincherados sin atacarse podían dejar la
+    // partida colgada indefinidamente: en una clase, un alumno bloqueado.
+    if (world.elapsed >= world.level.timeLimitSec) {
+      world.outcome = { won: false, loot: 0 };
+      this.announce(world);
+      return;
+    }
+
     // --- Derrota por estancamiento ---
     const team = world.teams.US;
     const hasUnits = world.countLiving('US') > 0;

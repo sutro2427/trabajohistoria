@@ -1158,3 +1158,19 @@ html, body {
     max-height: 26dvh;
   }
 }
+
+/* El último minuto de la operación se marca en rojo: en una competencia
+   contra el reloj, el jugador tiene que notarlo sin leer el número. */
+.hud-timer.is-urgent {
+  color: #ff9a8a;
+  border-color: var(--blood);
+  animation: urgent-pulse 1s steps(2) infinite;
+}
+
+@keyframes urgent-pulse {
+  50% { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-timer.is-urgent { animation: none; }
+}

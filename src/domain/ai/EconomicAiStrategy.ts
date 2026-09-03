@@ -91,6 +91,11 @@ export class EconomicAiStrategy implements IAiStrategy {
     // botella que tiene el jugador.
     if (ctx.me.queue.length > 0) return;
 
+    // Techo propio de la IA: por debajo del límite del nivel. Es lo que evita
+    // que gane por saturación a un jugador humano, que no puede pulsar botones
+    // al ritmo de un bucle de simulación.
+    if (ctx.me.population >= this.profile.populationCap) return;
+
     // Error deliberado: dejar pasar el turno de compra. Es la forma más
     // honesta de hacer a una IA peor sin quitarle recursos — pierde tempo,
     // que es exactamente lo que pierde un jugador despistado.

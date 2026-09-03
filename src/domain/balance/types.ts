@@ -202,4 +202,25 @@ export interface LevelDef {
   readonly difficulty: string;
   /** Resumen de una línea de lo que introduce el nivel, para el menú. */
   readonly tagline: string;
+  /**
+   * Techo de población del enemigo en este nivel.
+   *
+   * Sobrescribe el del perfil de dificultad. Existe porque la curva de una
+   * campaña necesita control **por nivel**, no solo por perfil: cada nivel da
+   * al jugador herramientas distintas, así que el mismo adversario resulta
+   * fácil o imposible según con qué se le enfrente. Medido, el nivel 3 con el
+   * mismo techo que el 2 era *más fácil*, porque el jugador llega con
+   * francotiradores, tanque y bombardeo.
+   */
+  readonly enemyPopulationCap: number;
+  /**
+   * Duración máxima de la operación, en segundos.
+   *
+   * Agotarlo es una derrota: no se tomó la posición a tiempo. Existe por dos
+   * motivos. Uno técnico —con techo de población, dos bandos atrincherados y
+   * ninguno atacando pueden dejar la partida sin resolver para siempre, y en
+   * una clase eso es un alumno bloqueado— y otro de diseño: en una competencia
+   * por ver quién llega antes, el reloj tiene que contar.
+   */
+  readonly timeLimitSec: number;
 }

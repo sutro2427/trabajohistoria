@@ -50,7 +50,11 @@ export type GameEvents = {
   'training:queued': { team: TeamId; defId: string; trainTime: number };
 
   /** Se ha rechazado una compra (falta de suministros o de población). */
-  'training:rejected': { team: TeamId; defId: string; reason: 'supplies' | 'population' | 'locked' };
+  'training:rejected': {
+    team: TeamId;
+    defId: string;
+    reason: 'supplies' | 'population' | 'locked' | 'queue';
+  };
 
   /** Se ha lanzado un poder sobre el mapa. */
   'power:launched': {

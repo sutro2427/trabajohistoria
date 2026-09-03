@@ -330,7 +330,7 @@ export class Game {
     if (this.interactive) this.session.step(dt);
     this.input.update(dt);
     this.fx.update(dt);
-    this.hud.update(dt, this.session.world.elapsed);
+    this.hud.update(dt, this.session.world.elapsed, this.session.level.timeLimitSec);
 
     const team = this.session.world.teams.US;
     this.commandBar.update(dt, {

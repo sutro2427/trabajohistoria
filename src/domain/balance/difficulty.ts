@@ -18,7 +18,7 @@
  * adversario que administra mejor exactamente los mismos recursos.
  */
 
-export type DifficultyId = 'normal' | 'hard' | 'impossible';
+export type DifficultyId = 'easy' | 'normal' | 'hard' | 'impossible';
 
 /**
  * ---------------------------------------------------------------------------
@@ -96,6 +96,26 @@ export interface AiProfile {
   readonly defenseLineOffset: number;
 
   /**
+   * Tope de población de la IA.
+   *
+   * Es el único campo de este archivo que le pone un límite a la IA en lugar
+   * de solo empeorar su criterio, y está aquí por una razón medida: sin él, el
+   * nivel 1 era invencible para un alumno que juega por primera vez.
+   *
+   * El motivo es una asimetría que ningún ajuste de criterio arregla. La IA
+   * decide cada segundo y medio y no se distrae nunca; una persona mira la
+   * pantalla, decide, toca el botón y vuelve a mirar el combate. En una
+   * partida medida contra un novato realista, la IA produjo 17 unidades y el
+   * jugador 11 teniendo economía de sobra: la diferencia no era estratégica,
+   * era de reflejos.
+   *
+   * Limitar cuántas unidades puede tener la IA a la vez corrige eso de forma
+   * transparente: el adversario sigue jugando con los mismos costes, la misma
+   * cola y la misma economía, pero deja de poder ganar por saturación.
+   */
+  readonly populationCap: number;
+
+  /**
    * Probabilidad de cometer un error en cada decisión (0 = juego perfecto).
    *
    * Un error es una de dos cosas: saltarse una compra que tocaba, o lanzar un
@@ -120,6 +140,45 @@ export interface AiProfile {
  * mismo tope de población que los otros dos perfiles. Simplemente los
  * administra peor.
  */
+/**
+ * Recluta — el adversario de la primera operación.
+ *
+ * Existe porque el juego se calibró contra un jugador simulado que reacciona
+ * cuatro veces por segundo, y una persona no hace eso. Con la cola de una sola
+ * ranura, quien tarda dos segundos en volver a pulsar produce la mitad; medido
+ * contra un jugador novato realista, el nivel 1 se perdía **10 veces de 10**.
+ *
+ * Este perfil no le quita recursos a la IA: le quita criterio. Se conforma con
+ * dos porteadores, tarda dos segundos en reevaluar, necesita mucha ventaja y
+ * ocho hombres antes de atacar, tarda cuatro segundos en darse cuenta de que
+ * la están invadiendo, y casi la mitad de las veces se salta su propia
+ * decisión. Es un adversario que hace lo mismo que un alumno que juega por
+ * primera vez, y por eso la primera operación se puede aprender jugándola.
+ */
+const EASY: AiProfile = Object.freeze({
+  id: 'easy',
+  label: 'Recluta',
+  description: 'Reacciona tarde, ataca solo con mucha ventaja y falla a menudo.',
+  harvesterTarget: 2,
+  harvesterMax: 2,
+  /** Poca tropa por porteador: invierte mal su economía. */
+  armyPerHarvester: 5,
+  /** Piensa despacio: deja huecos en su cola igual que un jugador humano. */
+  thinkInterval: 2.2,
+  /** Tarda mucho en volver a defender su base. */
+  reactionDelay: 4.5,
+  /** Solo ataca con el doble de fuerza, y con ocho hombres. */
+  aggressionRatio: 2.0,
+  minArmyToAttack: 8,
+  pushDuration: 14,
+  retreatRatio: 0,
+  defenseLineOffset: 110,
+  /** Nunca más de diez unidades en el campo: un ejército que se puede batir. */
+  populationCap: 10,
+  /** Se salta casi la mitad de sus propias decisiones. */
+  mistakeChance: 0.45,
+});
+
 const NORMAL: AiProfile = Object.freeze({
   id: 'normal',
   label: 'Normal',
@@ -137,6 +196,7 @@ const NORMAL: AiProfile = Object.freeze({
   // Nunca corta un ataque perdido: lo deja correr hasta la última baja.
   retreatRatio: 0,
   defenseLineOffset: 150,
+  populationCap: 13,
   mistakeChance: 0.3,
 });
 
@@ -162,6 +222,7 @@ const HARD: AiProfile = Object.freeze({
   pushDuration: 24,
   retreatRatio: 0.5,
   defenseLineOffset: 175,
+  populationCap: 28,
   mistakeChance: 0.18,
 });
 
@@ -190,10 +251,13 @@ const IMPOSSIBLE: AiProfile = Object.freeze({
   pushDuration: 30,
   retreatRatio: 0.65,
   defenseLineOffset: 230,
+  /** Sin techo propio: solo el del nivel. Aquí la IA juega a tope. */
+  populationCap: 50,
   mistakeChance: 0,
 });
 
 export const AI_PROFILES: Readonly<Record<DifficultyId, AiProfile>> = Object.freeze({
+  easy: EASY,
   normal: NORMAL,
   hard: HARD,
   impossible: IMPOSSIBLE,
@@ -201,6 +265,7 @@ export const AI_PROFILES: Readonly<Record<DifficultyId, AiProfile>> = Object.fre
 
 /** Orden en el que se ofrecen las dificultades en el menú. */
 export const DIFFICULTY_ORDER: readonly DifficultyId[] = Object.freeze([
+  'easy',
   'normal',
   'hard',
   'impossible',

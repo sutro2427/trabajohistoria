@@ -77,7 +77,9 @@ export class GameSession {
     // La IA recibe la misma cola de entrenamiento que el jugador. Es lo que
     // garantiza que no pueda producir nada que no haya pagado.
     const ai = new EconomicAiStrategy(
-      getAiProfile(this.difficulty),
+      // El techo del nivel manda sobre el del perfil: es lo que permite
+      // calibrar cada operación por separado.
+      { ...getAiProfile(this.difficulty), populationCap: this.level.enemyPopulationCap },
       pickByRole(this.level.enemyBuildable, 'harvester'),
       pickByRole(this.level.enemyBuildable, 'infantry'),
     );

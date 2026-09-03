@@ -106,6 +106,7 @@ export class CommandBar {
             supplies: 'Suministros insuficientes',
             population: 'Límite de población alcanzado',
             locked: 'Necesitas los planos para construirlo',
+            queue: 'Cola de entrenamiento llena',
           }[reason],
         );
       }),

@@ -30,15 +30,27 @@ Para otra tanda, **Reiniciar sala**. Con `?sala=2b` abres una sala distinta por 
 
 ## La campaña
 
-| # | Operación | Qué introduce | Dificultad |
+| # | Operación | Qué introduce | Tiempo |
 |---|---|---|---|
-| 1 | **Valle de Ia Drang** | Solo infantería. Se aprende el ciclo: recolectar, producir, atacar | Accesible |
-| 2 | **Colina 812** | Francotiradores. Hay que componer el ejército, no solo acumular tropa | Media |
-| 3 | **Paso del Mekong** | Blindados y bombas de racimo. Todo sale del mismo bolsillo | Difícil |
+| 1 | **Valle de Ia Drang** | Solo infantería. Se aprende el ciclo: recolectar, producir, atacar | 6 min |
+| 2 | **Colina 812** | Francotiradores. Hay que componer el ejército, no solo acumular tropa | 7 min |
+| 3 | **Paso del Mekong** | Blindados y bombas de racimo. Todo sale del mismo bolsillo | 8 min |
 
 La curva no sube números: **cada nivel añade una decisión nueva**. Y la dificultad la fija el nivel, no el jugador, para que todos los alumnos compitan bajo las mismas condiciones.
 
-Verificado con partidas simuladas (ocho semillas por nivel, jugador competente): **8/8 · 7/8 · 4/8 victorias**. El nivel final se gana aproximadamente la mitad de las veces — difícil pero no imposible.
+Cada operación tiene **límite de tiempo**: agotarlo es una derrota. En una competencia por ver quién llega antes, el reloj cuenta.
+
+### Calibración: victorias sobre diez partidas
+
+Medido con jugadores simulados que reaccionan a **velocidad humana** —miran la pantalla, deciden, tocan el botón y vuelven a mirar el combate— y no con un bot que decide cuatro veces por segundo:
+
+| | Primera vez | Le pilló el punto | Juega bien |
+|---|---|---|---|
+| **Nivel 1** | 9 / 10 | 10 / 10 | 10 / 10 |
+| **Nivel 2** | 6 / 10 | 10 / 10 | 10 / 10 |
+| **Nivel 3** | 6 / 10 | 9 / 10 | 9 / 10 |
+
+Un alumno normal completa la campaña entera con holgura; uno que juega por primera vez necesita insistir en las dos últimas operaciones. Habrá ganadores, que es de lo que se trata.
 
 ---
 
@@ -167,17 +179,19 @@ Y la función de la que depende todo el aspecto: **`PixelBuffer.outline()`**, qu
 ## Verificación
 
 ```bash
-npm run verify    # typecheck + 112 tests
+npm run verify    # typecheck + 121 tests
 npm run build     # compila a dist/
 ```
 
-**112 tests en tres niveles:**
+**121 tests en tres niveles:**
 
 1. **Unitarios** — economía, combate, máquina de estados, IA, sprites, validación de nombres, ranking.
 2. **Partidas completas simuladas** — lo que de verdad valida el balance: que cada nivel sea ganable, que jugar mal se castigue, que ninguna partida se cuelgue y que la dificultad suba de nivel en nivel.
 3. **Regresión de arte** — huella SHA-1 de cada sprite: detecta un cambio visual accidental sin abrir un navegador.
 
-Las simulaciones destaparon tres fallos que a ojo no se habrían visto: el francotirador era una trampa (comprarlo bajaba las victorias de 6/8 a 0/8), el tanque batía más lejos que cualquier otra unidad y no tenía respuesta posible, y subir la IA a difícil *a la vez* que se añadían unidades nuevas hacía el nivel imposible.
+Las simulaciones destaparon fallos que a ojo no se habrían visto: el francotirador era una trampa (comprarlo bajaba las victorias de 6/8 a 0/8), el tanque batía más lejos que cualquier otra unidad y no tenía respuesta posible, y subir la IA a difícil *a la vez* que se añadían unidades nuevas hacía el nivel imposible.
+
+Y una lección que costó cara: **medir contra un bot óptimo no sirve**. Con un jugador simulado que decide cuatro veces por segundo, los tres niveles parecían bien ajustados; con una persona de verdad, el nivel 1 era durísimo. La suite `human-player.spec.ts` existe para que eso no vuelva a pasar.
 
 ---
 
