@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta name="description" content="Operación Delta — juego de estrategia en tiempo real pixel art ambientado en la Guerra de Vietnam." />
+    <title>Operación Delta</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/src/ui/ui.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Marco del juego: mantiene la relación 16:9 y centra el canvas. -->
+      <div id="stage">
+        <canvas id="screen" width="480" height="270" aria-label="Campo de batalla"></canvas>
+
+        <!-- ===== HUD superior: recursos, población y objetivo ===== -->
+        <header id="hud" class="overlay">
+          <div class="hud-group">
+            <span class="hud-chip" title="Suministros disponibles">
+              <span class="icon icon-supply" aria-hidden="true"></span>
+              <span id="hud-supplies" data-testid="hud-supplies">0</span>
+            </span>
+            <span class="hud-chip" title="Población actual / máxima">
+              <span class="icon icon-pop" aria-hidden="true"></span>
+              <span data-testid="hud-population"><span id="hud-pop">0</span>/<span id="hud-pop-max">0</span></span>
+            </span>
+          </div>
+          <div class="hud-group hud-right">
+            <span class="hud-objective" id="hud-objective" data-testid="hud-objective">Objetivo</span>
+            <span class="hud-chip hud-timer" id="hud-timer" data-testid="hud-timer">0:00</span>
+          </div>
+        </header>
+
+        <!-- ===== Barra de mando inferior: producción y órdenes ===== -->
+        <footer id="command-bar" class="overlay">
+          <div class="bar-section">
+            <span class="bar-label">Producción</span>
+            <div class="bar-buttons">
+              <button type="button" class="btn btn-buy" id="btn-buy-soldier" data-testid="btn-buy-soldier">
+                <span class="btn-name">Soldado</span>
+                <span class="btn-cost"><span class="icon icon-supply" aria-hidden="true"></span>3</span>
+              </button>
+              <button type="button" class="btn btn-buy" id="btn-buy-harvester" data-testid="btn-buy-harvester">
+                <span class="btn-name">Recolector</span>
+                <span class="btn-cost"><span class="icon icon-supply" aria-hidden="true"></span>4</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="bar-section bar-queue">
+            <span class="bar-label">Entrenando</span>
+            <div class="queue-slot" data-testid="queue-slot">
+              <div class="queue-fill" id="queue-fill"></div>
+              <span class="queue-text" id="queue-text">—</span>
+            </div>
+          </div>
+
+          <div class="bar-section">
+            <span class="bar-label">Órdenes</span>
+            <div class="bar-buttons">
+              <button type="button" class="btn btn-order" id="btn-attack" data-testid="btn-attack">Atacar</button>
+              <button type="button" class="btn btn-order is-active" id="btn-defend" data-testid="btn-defend">Defender</button>
+              <button type="button" class="btn btn-order" id="btn-retreat" data-testid="btn-retreat">Retirarse</button>
+            </div>
+          </div>
+        </footer>
+
+        <!-- ===== Capa de mensajes: carga, victoria, derrota ===== -->
+        <div id="overlay-screen" class="screen-overlay" data-testid="overlay-screen" hidden>
+          <div class="panel">
+            <h1 id="overlay-title" data-testid="overlay-title">Operación Delta</h1>
+            <p id="overlay-body" data-testid="overlay-body"></p>
+            <div id="overlay-stats" class="stats"></div>
+            <button type="button" class="btn btn-primary" id="overlay-action" data-testid="overlay-action">Comenzar</button>
+          </div>
+        </div>
+
+        <div id="toast" class="toast" data-testid="toast" hidden></div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

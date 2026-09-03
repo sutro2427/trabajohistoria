@@ -1,0 +1,23 @@
+{
+  "name": "operacion-delta",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Juego 2D pixel art de estrategia en tiempo real ambientado en la Guerra de Vietnam.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 4173",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify": "npm run typecheck && npm run test"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "tsx": "^4.23.13",
+    "typescript": "~5.6.3",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.4"
+  }
+}
