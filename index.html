@@ -12,8 +12,8 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="description" content="Mekong Front: 1968 — juego de estrategia en tiempo real pixel art ambientado en la Guerra de Vietnam." />
-    <title>Mekong Front: 1968</title>
+    <meta name="description" content="PIXEL WAR — juego de estrategia en tiempo real pixel art ambientado en la Guerra de Vietnam." />
+    <title>PIXEL WAR</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/src/ui/ui.css" />
   </head>
@@ -85,8 +85,8 @@
           <div class="menu-panel">
             <p class="menu-eyebrow">Valle de Ia Drang · Vietnam del Sur</p>
             <h1 class="menu-title">
-              <span class="menu-title-main">Mekong Front</span>
-              <span class="menu-title-year">1968</span>
+              <span class="menu-title-main">Pixel War</span>
+              <span class="menu-title-byline">by Ronka</span>
             </h1>
 
             <p class="menu-brief" id="menu-brief" data-testid="menu-brief"></p>
@@ -106,7 +106,7 @@
         <!-- ===== Acceso a la competencia: nombre y sala de espera ===== -->
         <div id="lobby-screen" class="screen-overlay lobby" data-testid="lobby-screen" hidden>
           <div class="panel panel-wide">
-            <h1 class="lobby-title">Mekong Front <span class="lobby-year">1968</span></h1>
+            <h1 class="lobby-title">Pixel War <span class="lobby-byline">by Ronka</span></h1>
             <p class="lobby-sub" id="lobby-sub">
               Tres operaciones. El primero en completarlas gana.
             </p>
@@ -158,11 +158,23 @@
           </div>
         </div>
 
+        <!-- Expandir a pantalla completa, como en un vídeo -->
+        <button
+          type="button"
+          id="btn-fullscreen"
+          class="corner-btn fullscreen-btn"
+          data-testid="btn-fullscreen"
+          title="Pantalla completa"
+          aria-label="Pantalla completa"
+        >
+          <span class="glyph-expand" aria-hidden="true"></span>
+        </button>
+
         <!-- Acceso rápido al panel durante la partida -->
         <button
           type="button"
           id="btn-board"
-          class="board-toggle"
+          class="corner-btn board-toggle"
           data-testid="btn-board"
           title="Ver posiciones"
           hidden
@@ -173,7 +185,7 @@
         <!-- ===== Capa de mensajes: victoria y derrota ===== -->
         <div id="overlay-screen" class="screen-overlay" data-testid="overlay-screen" hidden>
           <div class="panel">
-            <h1 id="overlay-title" data-testid="overlay-title">Mekong Front: 1968</h1>
+            <h1 id="overlay-title" data-testid="overlay-title">Pixel War</h1>
             <p id="overlay-body" data-testid="overlay-body"></p>
             <div id="overlay-stats" class="stats"></div>
 <div class="panel-actions">
@@ -193,6 +205,68 @@
         </div>
 
         <div id="toast" class="toast" data-testid="toast" hidden></div>
+
+        <!-- ===== Panel del profesor (?admin) ===== -->
+        <!-- Puerta: pide la contraseña antes de descubrir nada de la sala. -->
+        <div id="admin-gate" class="screen-overlay admin-gate" data-testid="admin-gate" hidden>
+          <form class="panel" id="admin-form">
+            <h1 class="admin-gate-title">Panel de control</h1>
+            <p class="admin-gate-sub">Acceso restringido al profesor.</p>
+            <label class="field-label" for="admin-password">Contraseña</label>
+            <input
+              type="password"
+              id="admin-password"
+              data-testid="admin-password"
+              class="field-input"
+              autocomplete="current-password"
+              spellcheck="false"
+            />
+            <p class="field-error" id="admin-error" data-testid="admin-error"></p>
+            <div class="panel-actions">
+              <button type="submit" class="btn btn-primary" data-testid="btn-admin-enter">
+                Entrar
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Cuadro de mando proyectable. -->
+        <div id="admin-panel" class="screen-overlay admin-panel" data-testid="admin-panel" hidden>
+          <header class="admin-head">
+            <div class="admin-brand">
+              <span class="admin-brand-main">Pixel War</span>
+              <span class="admin-brand-byline">by Ronka</span>
+            </div>
+            <div class="admin-head-meta">
+              <span class="admin-state" id="admin-state" data-testid="admin-state">EN ESPERA</span>
+              <span class="admin-room-label">Sala <b id="admin-room">clase</b></span>
+              <span class="admin-clock" id="admin-clock">--:--</span>
+            </div>
+          </header>
+
+          <p class="admin-banner" id="admin-banner" data-testid="admin-banner"></p>
+
+          <div class="admin-kpis" id="admin-kpis"></div>
+
+          <ol class="admin-rows" id="admin-rows" data-testid="admin-rows"></ol>
+
+          <footer class="admin-foot">
+            <p class="admin-share">
+              Enlace para la clase: <code id="admin-link" data-testid="admin-link"></code>
+            </p>
+            <div class="admin-controls">
+              <button type="button" class="btn btn-primary" id="admin-start" data-testid="btn-admin-start">
+                Dar la salida
+              </button>
+              <button type="button" class="btn" id="admin-reset" data-testid="btn-admin-reset">
+                Reiniciar sala
+              </button>
+              <button type="button" class="btn btn-ghost" id="admin-exit" data-testid="btn-admin-exit">
+                Salir del panel
+              </button>
+            </div>
+          </footer>
+        </div>
       </div>
 
       <!-- Aviso de orientación: en vertical el campo 16:9 sería una franja

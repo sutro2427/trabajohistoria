@@ -20,7 +20,7 @@ export class InputManager {
     private readonly canvas: HTMLCanvasElement,
     private readonly camera: Camera,
     /** Ancho lógico del canvas, para convertir píxeles de pantalla a píxeles del juego. */
-    private readonly logicalWidth: number,
+    private logicalWidth: number,
   ) {
     canvas.addEventListener('pointerdown', this.onPointerDown);
     window.addEventListener('pointermove', this.onPointerMove);
@@ -69,6 +69,11 @@ export class InputManager {
       this.keyDirection = 0;
     }
   };
+
+  /** Ajusta el ancho lógico tras un cambio de tamaño o de orientación. */
+  setLogicalWidth(width: number): void {
+    this.logicalWidth = width;
+  }
 
   update(dt: number): void {
     if (this.keyDirection !== 0) {

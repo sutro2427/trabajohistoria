@@ -28,6 +28,16 @@ export const WORLD = Object.freeze({
   /** Resolución lógica; se escala con enteros para que el pixel art no se deforme. */
   logicalWidth: 480,
   logicalHeight: 270,
+  /**
+   * Ancho lógico máximo que puede llegar a pedir un aparato muy panorámico.
+   *
+   * La altura es fija y el ancho se adapta al aspecto real de la pantalla (ver
+   * `render/Viewport.ts`), así que todo lo que se hornea **una sola vez y no se
+   * repite en bucle** —el cielo— tiene que caber en el caso más ancho. Con el
+   * cielo horneado a 480 px, un teléfono panorámico veía una franja negra en
+   * el borde derecho: la tira sencillamente se acababa.
+   */
+  maxLogicalWidth: 760,
   /** Poco más de dos pantallas y media: se abarca el frente sin perder la escala. */
   battlefieldWidth: 1260,
   /** Línea de suelo sobre la que caminan todas las unidades. */
@@ -91,6 +101,26 @@ export const WORLD = Object.freeze({
    */
   resourceAmounts: Object.freeze([70, 90, 110, 130, 150]),
 });
+
+/**
+ * Margen con el que la línea defensiva se adelanta al depósito en explotación.
+ *
+ * La línea **no** es una distancia fija a la base: se calcula en
+ * `defenseLineOffset()` a partir del depósito que los recolectores están
+ * trabajando en ese momento, y este es el colchón que se le suma.
+ *
+ * 55 px son algo más de medio alcance de rifle (90 px): suficiente para que el
+ * intercambio de disparos ocurra por delante de los porteadores.
+ *
+ * El valor está medido, no elegido a ojo. Entre 30 y 60 px el resultado es
+ * plano —un principiante gana la primera operación 40-44 veces de 60 con
+ * cualquiera de ellos—, y a partir de ahí se desploma: con 70 baja a 34 de 60
+ * y con 85 la campaña se vuelve otra cosa. El motivo es de tempo, no de
+ * combate: cuanto más lejos forma la línea, más tarda en llegar cada refuerzo
+ * recién producido, y una tropa que llega de una en una muere de una en una.
+ * De ahí que se tome el extremo alto de la meseta y ni un píxel más.
+ */
+export const DEFENSE_LINE_MARGIN = 55;
 
 /** Reglas de economía y producción. */
 export const ECONOMY = Object.freeze({

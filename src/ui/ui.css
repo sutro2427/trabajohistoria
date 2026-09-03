@@ -1,5 +1,5 @@
 /* ============================================================================
-   Operación Delta — estilos de interfaz
+   PIXEL WAR — estilos de interfaz
    La UI vive en el DOM (no dibujada en el canvas): así obtenemos accesibilidad,
    foco de teclado y escalado responsive gratis, y los tests pueden hacer clic
    por data-testid en lugar de calcular coordenadas dentro del canvas.
@@ -53,22 +53,51 @@ html, body {
   /* `100dvh` sigue a la barra de direcciones del navegador cuando aparece y
      desaparece; con `100vh` el escenario queda cortado por abajo en el móvil. */
   height: 100dvh;
+  width: 100vw;
   padding: 8px;
   /* Respeta el notch y la barra de gestos, que en horizontal están a los lados. */
   padding-left: max(8px, env(safe-area-inset-left));
   padding-right: max(8px, env(safe-area-inset-right));
 }
 
-/* El escenario mantiene 16:9 y crece hasta llenar la ventana. */
+/* El escenario sigue la relación de aspecto que publica el viewport. */
 #stage {
   position: relative;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: var(--stage-aspect, 16 / 9);
   width: min(100%, calc((100dvh - 16px) * 16 / 9));
   max-height: 100%;
   border: 2px solid var(--outline);
   box-shadow: 0 0 0 1px var(--olive-dark), 0 12px 40px rgba(0, 0, 0, 0.6);
   background: var(--jungle-deep);
   overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   En móvil el juego ocupa la pantalla ENTERA: sin marco, sin márgenes y sin
+   barras negras. El área lógica ya se adapta al aspecto real del aparato (ver
+   Viewport.ts), así que el escenario puede tomar el 100 % de las dos
+   dimensiones sin deformar un solo píxel.
+
+   Este bloque va DESPUÉS de la regla base a propósito: una media query no
+   añade especificidad, así que colocado antes lo ganaba la regla general y el
+   16:9 seguía mandando — que era exactamente el motivo de que en el teléfono
+   quedara marco a los lados.
+   -------------------------------------------------------------------------- */
+@media (pointer: coarse), (max-width: 900px) {
+  #app {
+    padding: 0;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  #stage {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    aspect-ratio: auto;
+    border: none;
+    box-shadow: none;
+  }
 }
 
 /* El canvas se estira al escenario; `pixelated` conserva el pixel art nítido. */
@@ -402,20 +431,22 @@ html, body {
   text-shadow: 2px 2px 0 var(--outline), 4px 4px 0 rgba(0, 0, 0, 0.45);
 }
 
-/* El año, en ámbar y con filetes a los lados: la marca de la operación. */
-.menu-title-year {
+/* La firma, en ámbar y con filetes a los lados. Deliberadamente pequeña: es
+   una firma, no un subtítulo, y no debe competir con el título. */
+.menu-title-byline {
   display: flex;
   align-items: center;
   gap: 0.6em;
-  font-size: clamp(11px, 1.9vw, 19px);
-  letter-spacing: 0.5em;
-  text-indent: 0.5em;
+  font-size: clamp(8px, 1.3vw, 13px);
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  text-transform: uppercase;
   color: var(--amber);
   text-shadow: 1px 1px 0 var(--outline);
 }
 
-.menu-title-year::before,
-.menu-title-year::after {
+.menu-title-byline::before,
+.menu-title-byline::after {
   content: "";
   width: clamp(18px, 4vw, 46px);
   height: 2px;
@@ -510,6 +541,12 @@ html, body {
 #command-bar {
   padding-left: max(clamp(6px, 1.4vw, 16px), env(safe-area-inset-left));
   padding-right: max(clamp(6px, 1.4vw, 16px), env(safe-area-inset-right));
+}
+
+/* El HUD, además del notch, reserva la esquina del botón de pantalla completa:
+   los 50 px son el botón (38) más su margen a ambos lados. */
+#hud {
+  padding-right: max(50px, calc(env(safe-area-inset-right) + 50px));
 }
 
 /* --------------------------------------------------------------------------
@@ -732,9 +769,12 @@ html, body {
   letter-spacing: 0.14em;
 }
 
-.lobby-year {
-  color: var(--olive-light);
-  letter-spacing: 0.2em;
+.lobby-byline {
+  color: var(--amber);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.42em;
+  vertical-align: 0.55em;
 }
 
 .lobby-sub {
@@ -911,15 +951,18 @@ html, body {
   justify-content: center;
 }
 
-/* Botón flotante para consultar posiciones sin salir de la partida. */
-.board-toggle {
+/* --------------------------------------------------------------------------
+   Botones de esquina: posiciones y pantalla completa
+   -------------------------------------------------------------------------- */
+
+.corner-btn {
   position: absolute;
-  top: 50%;
   right: 6px;
-  transform: translateY(-50%);
   z-index: 7;
   width: 38px;
   height: 38px;
+  display: grid;
+  place-items: center;
   font-size: 17px;
   line-height: 1;
   background: rgba(20, 26, 16, 0.88);
@@ -929,15 +972,79 @@ html, body {
   padding: 0;
 }
 
-.board-toggle[hidden] {
+.corner-btn[hidden] {
   display: none;
 }
 
+.board-toggle {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* El de pantalla completa va arriba a la derecha, donde lo espera cualquiera
+   que haya visto un vídeo. */
+.fullscreen-btn {
+  top: 6px;
+  right: 6px;
+}
+
+/* Icono de expandir dibujado con bordes: dos esquinas enfrentadas, el mismo
+   lenguaje visual que el botón de pantalla completa de un reproductor. */
+.glyph-expand {
+  width: 15px;
+  height: 15px;
+  position: relative;
+}
+
+.glyph-expand::before,
+.glyph-expand::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border: 2px solid currentColor;
+}
+
+.glyph-expand::before {
+  top: 0;
+  left: 0;
+  border-right: none;
+  border-bottom: none;
+}
+
+.glyph-expand::after {
+  bottom: 0;
+  right: 0;
+  border-left: none;
+  border-top: none;
+}
+
+/* En pantalla completa, el icono se invierte: las esquinas apuntan adentro. */
+.is-fullscreen .glyph-expand::before {
+  top: 0;
+  left: 0;
+  border: 2px solid currentColor;
+  border-left: none;
+  border-top: none;
+}
+
+.is-fullscreen .glyph-expand::after {
+  bottom: 0;
+  right: 0;
+  border: 2px solid currentColor;
+  border-right: none;
+  border-bottom: none;
+}
+
 @media (pointer: coarse) {
-  .board-toggle {
+  .corner-btn {
     width: 44px;
     height: 44px;
     right: max(6px, env(safe-area-inset-right));
+  }
+
+  .fullscreen-btn {
+    top: max(6px, env(safe-area-inset-top));
   }
 }
 
@@ -1173,4 +1280,233 @@ html, body {
 
 @media (prefers-reduced-motion: reduce) {
   .hud-timer.is-urgent { animation: none; }
+}
+
+/* ============================================================================
+   PANEL DEL PROFESOR (?admin)
+   Se proyecta en el aula, así que aquí manda la legibilidad a distancia: pocas
+   cifras, muy grandes, y contraste alto sobre fondo oscuro. Es la única parte
+   de la interfaz que NO se diseña para la pantalla de un teléfono.
+   ========================================================================= */
+
+.admin-gate .panel {
+  max-width: 26em;
+}
+
+.admin-gate-title {
+  margin: 0 0 0.25em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.admin-gate-sub {
+  margin: 0 0 1.2em;
+  color: var(--olive-light);
+  font-size: clamp(10px, 1.4vw, 13px);
+}
+
+.admin-panel {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.4vh, 18px);
+  padding: clamp(12px, 2.4vw, 34px);
+  background: linear-gradient(180deg, #0d1610 0%, #0b120d 100%);
+  overflow-y: auto;
+  align-items: stretch;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.admin-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8em;
+  border-bottom: 2px solid var(--olive);
+  padding-bottom: 0.5em;
+}
+
+.admin-brand-main {
+  font-size: clamp(18px, 2.6vw, 34px);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sand);
+  text-shadow: 2px 2px 0 var(--outline);
+}
+
+.admin-brand-byline {
+  margin-left: 0.6em;
+  font-size: clamp(8px, 1vw, 12px);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.admin-head-meta {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.4vw, 20px);
+  font-size: clamp(10px, 1.2vw, 15px);
+  color: var(--olive-light);
+}
+
+/* El estado de la sala cambia de color: en una proyección, el color se lee
+   antes que el texto. */
+.admin-state {
+  padding: 0.25em 0.8em;
+  border: 2px solid var(--khaki);
+  color: var(--khaki);
+  letter-spacing: 0.18em;
+}
+
+.admin-state[data-state="running"] {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.admin-state[data-state="finished"] {
+  border-color: var(--olive-light);
+  color: var(--olive-light);
+}
+
+.admin-room-label b { color: var(--sand); }
+
+.admin-banner {
+  margin: 0;
+  padding: 0.5em 0.8em;
+  border-left: 4px solid var(--olive);
+  background: rgba(74, 93, 35, 0.18);
+  font-size: clamp(12px, 1.9vw, 24px);
+  color: var(--sand);
+}
+
+.admin-banner.is-champion {
+  border-left-color: var(--amber);
+  background: rgba(255, 217, 138, 0.14);
+  color: var(--amber);
+}
+
+.admin-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7em, 1fr));
+  gap: clamp(6px, 1vw, 14px);
+}
+
+.admin-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2em;
+  padding: 0.6em 0.4em;
+  border: 2px solid var(--olive-dark);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.admin-kpi strong {
+  font-size: clamp(20px, 3.4vw, 46px);
+  color: var(--amber);
+  line-height: 1;
+}
+
+.admin-kpi span {
+  font-size: clamp(8px, 0.95vw, 12px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--olive-light);
+  text-align: center;
+}
+
+.admin-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.admin-rows li {
+  display: grid;
+  grid-template-columns: 2.4em 1fr auto 5.5em 3em;
+  align-items: center;
+  gap: 0.7em;
+  padding: 0.35em 0.6em;
+  background: rgba(0, 0, 0, 0.28);
+  border-left: 3px solid transparent;
+  font-size: clamp(11px, 1.5vw, 20px);
+}
+
+.admin-rows li.is-champion {
+  border-left-color: var(--amber);
+  background: rgba(255, 217, 138, 0.12);
+  color: var(--amber);
+}
+
+/* El aviso de sala vacía no es una fila: si hereda la rejilla de cinco
+   columnas, cada palabra cae en una columna distinta y se lee en vertical. */
+.admin-rows .board-empty {
+  display: block;
+  padding: 1.2em;
+  text-align: center;
+  color: var(--olive-light);
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.admin-pos { color: var(--olive-light); }
+.admin-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-time { text-align: right; color: var(--sand); }
+.admin-defeats { text-align: right; color: var(--blood); font-size: 0.8em; }
+
+/* Tres casillas que se llenan: el progreso se lee desde el fondo del aula
+   sin necesidad de descifrar un "2/3". */
+.admin-pips {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.admin-pips i {
+  width: clamp(10px, 1.4vw, 20px);
+  height: clamp(10px, 1.4vw, 20px);
+  border: 2px solid var(--olive);
+  background: transparent;
+}
+
+.admin-pips i.is-done {
+  background: var(--amber);
+  border-color: var(--amber);
+}
+
+.admin-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8em;
+  border-top: 2px solid var(--olive);
+  padding-top: 0.6em;
+}
+
+.admin-share {
+  margin: 0;
+  font-size: clamp(9px, 1.1vw, 14px);
+  color: var(--olive-light);
+}
+
+.admin-share code {
+  color: var(--sand);
+  word-break: break-all;
+}
+
+.admin-controls {
+  display: flex;
+  gap: 0.5em;
+  flex-wrap: wrap;
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--olive-dark);
+  color: var(--olive-light);
 }

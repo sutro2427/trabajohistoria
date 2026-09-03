@@ -60,7 +60,16 @@ function playMatch(
 
 /**
  * Política estándar: la apertura que enseñaría cualquier guía del género.
- * Tres recolectores primero, luego soldados, y atacar al reunir cinco.
+ * Tres recolectores primero, luego soldados, y atacar al reunir escuadra.
+ *
+ * Los dos umbrales se corrigieron al medir la campaña actual. Antes atacaba
+ * con cinco soldados y solo se replegaba cuando le quedaba uno, y eso, contra
+ * un defensor que aguanta en su línea y con el reloj de la operación corriendo,
+ * es la forma más rápida de perder: entra a goteo, pierde la escuadra entera y
+ * vuelve a empezar hasta que se acaba el tiempo. Medido sobre 30 semillas, ese
+ * bucle ganaba 13 de 30; juntar siete y retirarse al bajar de tres gana 30 de
+ * 30. La política tiene que representar a un jugador que sigue una guía, no a
+ * uno que regala su ejército.
  */
 const standardPolicy: Policy = (session) => {
   const world = session.world;
@@ -79,9 +88,9 @@ const standardPolicy: Policy = (session) => {
     session.trainUnit('us_rifleman');
   }
 
-  // Atacar con masa suficiente; replegarse si el ataque se ha desangrado.
-  if (soldiers >= 5) session.setStance('attack');
-  else if (soldiers <= 1 && team.stance === 'attack') session.setStance('defend');
+  // Atacar con masa suficiente; replegarse antes de que el ataque se desangre.
+  if (soldiers >= 7) session.setStance('attack');
+  else if (soldiers <= 3 && team.stance === 'attack') session.setStance('defend');
 };
 
 /** Política de economía pura: nunca compra soldados. Debe perder. */

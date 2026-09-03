@@ -4,14 +4,16 @@ import { installDebugBridge } from './app/DebugBridge.js';
 import { LocalStorageProgressRepository } from './persistence/LocalStorageProgressRepository.js';
 import type { ICompetition } from './campaign/ICompetition.js';
 import { LocalCompetition } from './campaign/LocalCompetition.js';
-import { readAdminKey, readFirebaseSettings, readRoomId } from './campaign/firebaseConfig.js';
+import { readFirebaseSettings, readRoomId } from './campaign/firebaseConfig.js';
+import { isAdminRequested } from './campaign/adminAccess.js';
 
 /**
  * Punto de entrada.
  *
  * Parámetros de URL:
  *   ?sala=1a       sala de competencia (permite un enlace por curso)
- *   ?admin=<clave> muestra los controles del profesor
+ *   ?admin         abre el panel del profesor (pide contraseña)
+ *   ?admin=<clave> lo abre directamente, sin preguntar
  *   ?seed=123      fija la semilla, para reproducir una partida exacta
  *   ?speed=8       acelera la simulación (pruebas y depuración)
  *   ?debug=1       expone `window.__GAME_DEBUG__`
@@ -75,11 +77,11 @@ async function bootstrap(): Promise<void> {
   const timeScale = params.has('speed') ? Number(params.get('speed')) : undefined;
   const debug = params.get('debug') === '1' || import.meta.env.DEV;
 
-  // La clave del profesor se compara con la configurada en el despliegue. Es
-  // una barrera de conveniencia, no de seguridad: lo que de verdad impide que
-  // un alumno manipule la sala son las reglas de Firestore.
-  const expectedAdminKey = import.meta.env['VITE_ADMIN_KEY'];
-  const admin = Boolean(expectedAdminKey) && readAdminKey() === expectedAdminKey;
+  // El panel del profesor se pide con `?admin` y se abre tras escribir la
+  // contraseña (ver `campaign/adminAccess.ts`, donde está explicado por qué es
+  // una barrera de conveniencia y no de seguridad).
+  const admin = isAdminRequested();
+  const roomId = readRoomId();
 
   const competition = await createCompetition();
 
@@ -89,6 +91,7 @@ async function bootstrap(): Promise<void> {
     ...(seed !== undefined && Number.isFinite(seed) ? { seed } : {}),
     ...(timeScale !== undefined && Number.isFinite(timeScale) ? { timeScale } : {}),
     admin,
+    roomId,
   });
 
   if (debug) installDebugBridge(game);

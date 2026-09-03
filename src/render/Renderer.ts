@@ -186,7 +186,7 @@ export class Renderer {
     const ctx = this.ctx;
     const cam = this.camera.x;
 
-    ctx.clearRect(0, 0, WORLD.logicalWidth, WORLD.logicalHeight);
+    ctx.clearRect(0, 0, this.camera.width, WORLD.logicalHeight);
     ctx.save();
     // La sacudida de cámara se aplica una sola vez, a todo el fotograma.
     ctx.translate(0, Math.round(this.camera.shakeY));
@@ -272,7 +272,7 @@ export class Renderer {
     const offset = Math.round(cam * factor);
     // El módulo se normaliza a positivo: en JavaScript (-5 % 480) es -5.
     let x = -(((offset % strip.width) + strip.width) % strip.width);
-    while (x < WORLD.logicalWidth) {
+    while (x < this.camera.width) {
       ctx.drawImage(strip, x, y);
       x += strip.width;
     }
@@ -325,7 +325,7 @@ export class Renderer {
       [22, 30, 0.75],
     ];
     // Recorrido virtual algo mayor que la pantalla: entran y salen de cuadro.
-    const span = WORLD.logicalWidth + heli.width * 3;
+    const span = this.camera.width + heli.width * 3;
 
     for (const [y, speed, phase] of patrol) {
       // Vuelan de derecha a izquierda, hacia la posición estadounidense.
@@ -398,10 +398,15 @@ export class Renderer {
       const sprite = this.atlas.structures[`supply_drop_${stage}`];
       if (!sprite || !this.camera.isVisible(node.x, sprite.width)) continue;
 
+      // Los depósitos se apoyan por DETRÁS del carril por el que camina la
+      // tropa, no sobre él. Es un desplazamiento vertical pequeño, pero es lo
+      // que separa en pantalla dos cosas que ocupan el mismo tramo de mapa:
+      // sin él, soldados y cajas se pintaban unos encima de otros y la línea
+      // defensiva parecía estar dentro del almacén.
       ctx.drawImage(
         sprite,
         Math.round(node.x - cam - sprite.width * 0.5),
-        Math.round(WORLD.groundY - sprite.height + 2),
+        Math.round(WORLD.groundY - WORLD.laneJitter - 4 - sprite.height + 2),
       );
     }
   }
@@ -461,7 +466,7 @@ export class Renderer {
       if (!p.alive) continue;
       const x = lerp(p.prevX, p.x, alpha) - cam;
       const y = lerp(p.prevY, p.y, alpha);
-      if (x < -8 || x > WORLD.logicalWidth + 8) continue;
+      if (x < -8 || x > this.camera.width + 8) continue;
 
       // La bala se dibuja como una estela corta en su dirección de vuelo:
       // un punto suelto a esta escala sería invisible.
@@ -494,7 +499,7 @@ export class Renderer {
       if (!strike.alive) continue;
       const left = Math.round(strike.centerX - strike.halfWidth - cam);
       const width = Math.round(strike.halfWidth * 2);
-      if (left + width < 0 || left > WORLD.logicalWidth) continue;
+      if (left + width < 0 || left > this.camera.width) continue;
 
       const top = strike.groundY - 26;
 

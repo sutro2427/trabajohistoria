@@ -10,11 +10,14 @@ import { Camera } from '../render/Camera.js';
 import { FxSystem } from '../render/FxSystem.js';
 import { Renderer } from '../render/Renderer.js';
 import { SpriteAtlas } from '../render/SpriteAtlas.js';
+import { ViewportManager } from '../render/Viewport.js';
 import { CommandBar } from '../ui/CommandBar.js';
 import { Hud } from '../ui/Hud.js';
 import { LobbyScreen } from '../ui/LobbyScreen.js';
+import { FullscreenButton } from '../ui/FullscreenButton.js';
 import { ResultOverlay } from '../ui/ResultOverlay.js';
 import { ScoreBoard } from '../ui/ScoreBoard.js';
+import { AdminPanel } from '../ui/AdminPanel.js';
 import type { ICompetition, LobbySnapshot } from '../campaign/ICompetition.js';
 import {
   createRun,
@@ -55,6 +58,13 @@ export class Game {
   private readonly lobby: LobbyScreen;
   private readonly board: ScoreBoard;
   private readonly input: InputManager;
+  private readonly viewport: ViewportManager;
+  /**
+   * Panel del profesor. Solo existe si se entró con `?admin`: en la página de
+   * un alumno ni siquiera se construye, así que no hay nada que abrir desde la
+   * consola del navegador.
+   */
+  private readonly admin: AdminPanel | null = null;
 
   private session!: GameSession;
   private renderer!: Renderer;
@@ -82,7 +92,7 @@ export class Game {
     canvas: HTMLCanvasElement,
     private readonly progressRepo: IProgressRepository,
     private readonly competition: ICompetition,
-    options: { seed?: number; timeScale?: number; admin?: boolean } = {},
+    options: { seed?: number; timeScale?: number; admin?: boolean; roomId?: string } = {},
   ) {
     const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) throw new Error('No se pudo obtener el contexto 2D del canvas');
@@ -91,15 +101,20 @@ export class Game {
 
     this.fixedSeed = options.seed;
     this.seed = options.seed ?? Math.floor(Math.random() * 1_000_000);
-    this.camera = new Camera(WORLD.logicalWidth);
+
+    // El área lógica se adapta a la pantalla: en un teléfono alargado se ve
+    // más campo de batalla en vez de dejar barras negras a los lados.
+    this.viewport = new ViewportManager(canvas, (size) => this.onViewportChange(size));
+    this.camera = new Camera(this.viewport.size.width);
 
     // El arte se hornea una sola vez y sirve para toda la campaña.
     this.atlas = new SpriteAtlas(bakeArt());
 
     // Se guarda la referencia: la versión anterior descartaba el objeto y por
     // eso el desplazamiento de cámara con el teclado nunca llegaba a ejecutarse.
-    this.input = new InputManager(canvas, this.camera, WORLD.logicalWidth);
+    this.input = new InputManager(canvas, this.camera, this.viewport.size.width);
 
+    new FullscreenButton();
     this.board = new ScoreBoard();
     this.lobby = new LobbyScreen({
       onJoin: (name) => this.joinCompetition(name),
@@ -107,9 +122,21 @@ export class Game {
     });
 
     if (options.admin) {
+      // Los mismos dos controles siguen estando en la tabla de posiciones: el
+      // profesor puede dar la salida desde el panel proyectado o desde su
+      // propia partida, sin tener que elegir dónde se sienta.
       this.board.enableAdmin(
         () => void this.competition.startCompetition(),
         () => void this.competition.resetCompetition(),
+      );
+
+      this.admin = new AdminPanel(
+        {
+          onStart: () => void this.competition.startCompetition(),
+          onReset: () => void this.competition.resetCompetition(),
+        },
+        options.roomId ?? 'clase',
+        this.competition.online,
       );
     }
 
@@ -120,6 +147,20 @@ export class Game {
     if (options.timeScale) this.loop.setTimeScale(options.timeScale);
   }
 
+  /**
+   * Reacciona a un cambio de tamaño o de orientación.
+   *
+   * Los tres consumidores del ancho lógico tienen que enterarse a la vez: la
+   * cámara (para no dejar ver el vacío del final del mapa), la entrada (para
+   * convertir bien el arrastre) y la barra de mando (para que el bombardeo
+   * caiga donde el jugador tocó).
+   */
+  private onViewportChange(size: { width: number; height: number }): void {
+    this.camera.setViewWidth(size.width);
+    this.input.setLogicalWidth(size.width);
+    this.commandBar?.setLogicalWidth(size.width);
+  }
+
   /** Arranca la aplicación en la pantalla de acceso. */
   start(): void {
     this.levelId = 1;
@@ -127,7 +168,11 @@ export class Game {
     this.loop.start();
 
     this.competition.subscribe((snapshot) => this.onLobbyChange(snapshot));
-    this.lobby.show();
+
+    // El profesor no entra a jugar: su pantalla es el cuadro de mando. Si no
+    // es una sesión de administrador, se abre la pantalla de acceso normal.
+    if (this.admin) this.admin.open();
+    else this.lobby.show();
   }
 
   // -------------------------------------------------------------------------
@@ -155,9 +200,12 @@ export class Game {
     // pocas filas de DOM es gratis, y así al pulsar el botón ya está al día.
     // Condicionarlo a que fuera visible dejaba el panel vacío la primera vez.
     this.board.render(snapshot, this.competition.online);
+    this.admin?.render(snapshot);
 
-    // La salida la da el profesor y arranca a todos a la vez.
-    if (snapshot.state === 'running' && !this.started && this.run !== null) {
+    // La salida la da el profesor y arranca a todos a la vez. En la pantalla
+    // proyectada no: ahí no hay nadie jugando, y arrancar una partida detrás
+    // del panel solo serviría para gastar batería del portátil del aula.
+    if (snapshot.state === 'running' && !this.started && this.run !== null && !this.admin) {
       this.beginCampaign();
     }
   }
@@ -222,7 +270,7 @@ export class Game {
           if (this.interactive) this.session.launchPower(powerId, worldX);
         },
       },
-      WORLD.logicalWidth,
+      this.viewport.size.width,
     );
     this.commandBar.buildFor(this.session.buildable, this.session.powers);
 

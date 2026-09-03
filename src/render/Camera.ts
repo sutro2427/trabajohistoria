@@ -20,7 +20,24 @@ export class Camera {
   /** Segundos que quedan de control manual antes de reanudar el seguimiento. */
   private manualTimer = 0;
 
-  constructor(private readonly viewWidth: number = WORLD.logicalWidth) {}
+  constructor(private viewWidth: number = WORLD.logicalWidth) {}
+
+  /**
+   * Actualiza el ancho visible.
+   *
+   * Se llama al girar el teléfono o al entrar en pantalla completa: si la
+   * cámara siguiera creyendo que ve 480 px cuando la pantalla muestra 620, el
+   * clamp a los bordes del mapa dejaría ver el vacío del final del mundo.
+   */
+  setViewWidth(width: number): void {
+    this.viewWidth = width;
+    this.x = clamp(this.x, 0, this.maxX);
+  }
+
+  /** Ancho visible actual, en píxeles lógicos. */
+  get width(): number {
+    return this.viewWidth;
+  }
 
   /** Máximo desplazamiento posible sin salir del mapa. */
   private get maxX(): number {

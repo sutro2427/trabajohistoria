@@ -67,7 +67,7 @@ export class CommandBar {
   constructor(
     bus: EventBus<GameEvents>,
     private readonly handlers: CommandBarHandlers,
-    private readonly logicalWidth: number,
+    private logicalWidth: number,
   ) {
     this.productionRoot = requireElement('production-buttons');
     this.powersSection = requireElement('powers-section');
@@ -114,6 +114,15 @@ export class CommandBar {
         if (team === 'US') this.showToast('Suministros insuficientes');
       }),
     );
+  }
+
+  /**
+   * Ajusta el ancho lógico tras un cambio de tamaño.
+   * Sin esto, tras girar el teléfono las bombas caerían desplazadas respecto
+   * al punto que tocó el jugador.
+   */
+  setLogicalWidth(width: number): void {
+    this.logicalWidth = width;
   }
 
   /** Registra un oyente del DOM y apunta su baja. */

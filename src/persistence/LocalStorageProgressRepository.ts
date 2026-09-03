@@ -12,6 +12,12 @@ import { initialProgress, type Progress } from './Progress.js';
  * molesto; que el juego no arranque por ello sería mucho peor.
  */
 export class LocalStorageProgressRepository implements IProgressRepository {
+  /**
+   * La clave conserva el nombre en clave original del proyecto a propósito:
+   * cambiarla al renombrar el juego borraría el progreso ya guardado en el
+   * navegador de quien lo estuviera jugando. Un identificador de
+   * almacenamiento es un dato, no un rótulo.
+   */
   constructor(private readonly key = 'operacion-delta:progress:v1') {}
 
   load(): Progress {

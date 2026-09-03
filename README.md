@@ -1,4 +1,4 @@
-# Mekong Front: 1968
+# PIXEL WAR — *by Ronka*
 
 Juego de estrategia en tiempo real, **pixel art 2D en vista lateral**, ambientado en la Guerra de Vietnam. Tres operaciones encadenadas, jugable desde el teléfono, con **panel de posiciones compartido en vivo** para competir en clase.
 
@@ -11,16 +11,26 @@ Juego de estrategia en tiempo real, **pixel art 2D en vista lateral**, ambientad
 ### Antes de la sesión
 
 1. **Despliega el juego** (ver [Puesta en marcha](#puesta-en-marcha)).
-2. Abre el panel de profesor: `https://tu-sitio.netlify.app/?admin=TU_CLAVE`
-3. Comparte con los alumnos el enlace **sin** la clave: `https://tu-sitio.netlify.app/`
+2. Abre el **panel de control** en el equipo de la proyección:
+   `https://tu-sitio.netlify.app/?admin` → te pide la contraseña (**`RONKAGEI`**).
+   Si prefieres un enlace directo, sin que pregunte: `?admin=RONKAGEI`.
+3. Comparte con los alumnos el enlace **sin** `?admin`: `https://tu-sitio.netlify.app/`
+   (el propio panel lo muestra abajo para poder dictarlo).
 
 ### Durante la sesión
 
 1. Cada alumno entra, escribe **nombre y apellido** y queda en la sala de espera.
-2. Tú ves la lista de quién está listo. Cuando estén todos, pulsas **Dar la salida**.
+2. En el panel ves quién ha entrado. Cuando estén todos, pulsas **Dar la salida**.
 3. Todos arrancan a la vez en la Operación 1.
-4. El panel (🏆) muestra las posiciones en vivo: nivel alcanzado y tiempo.
-5. **Gana el primer alumno que complete las tres operaciones.**
+4. **Deja el panel proyectado**: se actualiza solo con las posiciones en vivo —puesto,
+   nombre, las tres operaciones como casillas que se van encendiendo, tiempo y
+   derrotas—, más el recuento del grupo y un reloj con lo que le queda a la sala.
+5. **Gana el primer alumno que complete las tres operaciones**, y el panel lo anuncia
+   en la franja superior en cuanto ocurre.
+
+> La contraseña del panel se comprueba en el navegador: sirve para que nadie entre por
+> curiosidad, no como medida de seguridad. Quien protege los datos de verdad son las
+> reglas de `firestore.rules`. Se puede cambiar por despliegue con `VITE_ADMIN_KEY`.
 
 Para otra tanda, **Reiniciar sala**. Con `?sala=2b` abres una sala distinta por curso.
 
@@ -40,17 +50,18 @@ La curva no sube números: **cada nivel añade una decisión nueva**. Y la dific
 
 Cada operación tiene **límite de tiempo**: agotarlo es una derrota. En una competencia por ver quién llega antes, el reloj cuenta.
 
-### Calibración: victorias sobre diez partidas
+### Calibración: victorias sobre diez campañas encadenadas
 
-Medido con jugadores simulados que reaccionan a **velocidad humana** —miran la pantalla, deciden, tocan el botón y vuelven a mirar el combate— y no con un bot que decide cuatro veces por segundo:
+Medido con jugadores simulados que reaccionan a **velocidad humana** —miran la pantalla, deciden, tocan el botón y vuelven a mirar el combate— y no con un bot que decide cuatro veces por segundo. Y encadenando las tres operaciones con su botín, como se juega de verdad:
 
 | | Primera vez | Le pilló el punto | Juega bien |
 |---|---|---|---|
 | **Nivel 1** | 9 / 10 | 10 / 10 | 10 / 10 |
-| **Nivel 2** | 6 / 10 | 10 / 10 | 10 / 10 |
-| **Nivel 3** | 6 / 10 | 9 / 10 | 9 / 10 |
+| **Nivel 2** | 7 / 10 | 10 / 10 | 10 / 10 |
+| **Nivel 3** | 0 / 10 | 4 / 10 | 9 / 10 |
+| **Campaña completa** | 0 / 10 | 4 / 10 | 8 / 10 |
 
-Un alumno normal completa la campaña entera con holgura; uno que juega por primera vez necesita insistir en las dos últimas operaciones. Habrá ganadores, que es de lo que se trata.
+Las dos primeras operaciones se aprenden jugándolas. **La tercera se endureció a propósito**: con el rival anterior se ganaba a la primera y dejaba de ser una final. Ahora exige llegar con economía montada y no regalar tropa, y un jugador distraído no la saca. Sigue habiendo ganador —ocho campañas completas de diez jugando bien—, que es de lo que se trata.
 
 ---
 

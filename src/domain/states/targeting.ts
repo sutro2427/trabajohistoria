@@ -1,4 +1,4 @@
-import { COMBAT, WORLD } from '../balance/balance.js';
+import { COMBAT, DEFENSE_LINE_MARGIN, WORLD } from '../balance/balance.js';
 import type { Stance, TeamId, UnitDef } from '../balance/types.js';
 import type { Entity, Structure } from '../world/Entity.js';
 import type { World } from '../world/World.js';
@@ -53,6 +53,47 @@ export function findNearestEnemy(world: World, self: Entity, radius: number): Ta
 }
 
 /**
+ * Distancia desde la base a la que forma la línea defensiva de un bando.
+ *
+ * No es una constante: es **el depósito que se está explotando, más un
+ * margen**. La tropa se planta siempre por delante de los porteadores, y a
+ * medida que los depósitos cercanos se agotan y la recolección se desplaza
+ * hacia el centro del mapa, la línea avanza con ella.
+ *
+ * Existe por dos motivos que apuntan en la misma dirección:
+ *
+ *  · **Legibilidad.** Con la línea fija en 110 px la tropa formaba justo
+ *    encima de los dos primeros depósitos —donde trabajan los recolectores
+ *    durante el primer tramo de partida—, y en pantalla soldados y porteadores
+ *    se veían amontonados en el mismo punto.
+ *
+ *  · **Ritmo.** Una línea fija por delante de *todos* los depósitos (307 px)
+ *    resuelve lo visual pero rompe el juego: medido, un principiante pasaba de
+ *    ganar 9 de 10 en la primera operación a ganar 5, porque cada refuerzo
+ *    recién producido tenía que cruzar solo trescientos píxeles y llegaba al
+ *    frente de uno en uno. Seguir al depósito activo deja la línea en ~135 px
+ *    al empezar —cuando el ejército aún es pequeño— y solo la adelanta cuando
+ *    la partida ya está madura y hay tropa suficiente para sostenerla.
+ */
+export function defenseLineOffset(world: World, team: TeamId): number {
+  const baseX = world.teams[team].baseX;
+  let nearestActive = Infinity;
+  let furthest = 0;
+
+  for (const node of world.nodes) {
+    if (node.team !== team) continue;
+    const distance = Math.abs(node.x - baseX);
+    if (distance > furthest) furthest = distance;
+    if (node.amount > 0 && distance < nearestActive) nearestActive = distance;
+  }
+
+  // Sin depósitos con suministros la economía ya está muerta: la línea se
+  // queda en el punto más avanzado en lugar de replegarse sobre la base.
+  const reference = nearestActive === Infinity ? furthest : nearestActive;
+  return reference + DEFENSE_LINE_MARGIN;
+}
+
+/**
  * Coordenada X hacia la que debe dirigirse una unidad según la postura de su
  * bando. Es la traducción de "una orden de escuadra" a "un destino personal".
  */
@@ -78,9 +119,9 @@ export function anchorFor(world: World, entity: Entity, stance: Stance): number 
       return front - rank;
     }
     case 'defend':
-      // Formar una línea por delante de la base propia, no encima de ella:
-      // así el combate se libra en el parapeto y no dentro del campamento.
-      return team.baseX + dir * 110 - rank;
+      // Formar por delante de los depósitos en explotación, no encima de
+      // ellos. Ver `defenseLineOffset()`.
+      return team.baseX + dir * defenseLineOffset(world, entity.team) - rank;
     case 'retreat':
       return team.baseX - dir * 10 - rank;
   }

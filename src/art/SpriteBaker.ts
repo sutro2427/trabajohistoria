@@ -312,7 +312,10 @@ export function bakeArt(seed: number = ART_SEED): BakedArt {
   // queda corto, por debajo no hay nada que dibujar y aparece una banda negra.
   const bgRng = new Rng(seed + 600);
   const background = {
-    sky: drawSky(480, WORLD.groundY),
+    // El cielo se hornea al ancho máximo posible porque se dibuja una sola vez
+    // y sin repetirse: si se quedara corto, el borde de la pantalla quedaría
+    // en negro en los aparatos más panorámicos.
+    sky: drawSky(WORLD.maxLogicalWidth, WORLD.groundY),
     hills: drawDistantHills(bgRng, 66),
     // Capas altas: la selva debe dominar el encuadre. Con capas bajas, el
     // cielo se comía media pantalla y el escenario no se leía como jungla.

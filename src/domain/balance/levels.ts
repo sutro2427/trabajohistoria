@@ -132,11 +132,29 @@ const LEVEL_3: LevelDef = Object.freeze({
    */
   difficulty: 'hard',
   /**
-   * El techo más alto de la campaña. Aquí el jugador llega con francotiradores,
-   * blindado y bombardeo: puede permitirse un adversario más numeroso, y de
-   * hecho lo necesita para que la operación final se sienta como tal.
+   * El techo más alto de la campaña — y el número más delicado de todo el
+   * balance, porque aquí no se comporta como un dial sino como un interruptor.
+   *
+   * La guarnición ocupa 11 de población (el blindado solo son 8) y la IA se
+   * paga tres porteadores. Con el techo en 17 no le quedaba hueco para juntar
+   * la escuadra que su perfil exige antes de atacar (`minArmyToAttack`), así
+   * que se quedaba **defendiendo su base durante toda la partida**: el jugador
+   * montaba su ejército sin oposición y entraba a placer. Ese era el "gané muy
+   * fácil" del encargo, y no se arreglaba haciendo a la IA más lista.
+   *
+   * Con 18 sí llega a esa escuadra, y la operación final pasa a tener oleadas
+   * de verdad. Medido sobre 60 campañas encadenadas (el botín de un nivel
+   * entra en el siguiente, como en la partida real):
+   *
+   *              techo 17      techo 18
+   *   medio        79 %          38 %
+   *   bueno        93 %          73 %
+   *
+   * De ahí que no se suba más: con 20 el jugador bueno baja al 43 % y la
+   * operación deja de ser ganable para casi todos. Un punto de población es
+   * toda la diferencia entre un rival pasivo y uno que presiona.
    */
-  enemyPopulationCap: 17,
+  enemyPopulationCap: 18,
   timeLimitSec: 480,
 });
 

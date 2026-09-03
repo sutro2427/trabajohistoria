@@ -57,11 +57,6 @@ export function readRoomId(search: string = window.location.search): string {
   return clean.length > 0 ? clean : 'clase';
 }
 
-/** Clave de administrador tomada de la URL (`?admin=...`). */
-export function readAdminKey(search: string = window.location.search): string | null {
-  return new URLSearchParams(search).get('admin');
-}
-
 /**
  * Tiempo de vida de los datos de una sala: una hora.
  *
