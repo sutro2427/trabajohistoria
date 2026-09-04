@@ -398,15 +398,16 @@ export class Renderer {
       const sprite = this.atlas.structures[`supply_drop_${stage}`];
       if (!sprite || !this.camera.isVisible(node.x, sprite.width)) continue;
 
-      // Los depósitos se apoyan por DETRÁS del carril por el que camina la
-      // tropa, no sobre él. Es un desplazamiento vertical pequeño, pero es lo
-      // que separa en pantalla dos cosas que ocupan el mismo tramo de mapa:
-      // sin él, soldados y cajas se pintaban unos encima de otros y la línea
-      // defensiva parecía estar dentro del almacén.
+      // Los depósitos se apoyan EN EL SUELO, como todo lo demás de la escena.
+      // Se probó a subirlos unos píxeles para separarlos del carril por el que
+      // camina la tropa, y el remedio fue peor que la enfermedad: las cajas
+      // quedaban flotando en el aire. La separación entre tropa y economía se
+      // resuelve donde corresponde —en dónde forma la línea defensiva, ver
+      // `defenseLineOffset()`— y no falseando la perspectiva.
       ctx.drawImage(
         sprite,
         Math.round(node.x - cam - sprite.width * 0.5),
-        Math.round(WORLD.groundY - WORLD.laneJitter - 4 - sprite.height + 2),
+        Math.round(WORLD.groundY - sprite.height + 2),
       );
     }
   }
