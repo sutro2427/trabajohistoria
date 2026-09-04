@@ -19,7 +19,8 @@ Juego de estrategia en tiempo real, **pixel art 2D en vista lateral**, ambientad
 
 ### Durante la sesión
 
-1. Cada alumno entra, escribe **nombre y apellido** y queda en la sala de espera.
+1. Cada alumno abre el enlace, pulsa **JUGAR**, escribe **nombre y apellido** y queda
+   en la sala de espera.
 2. En el panel ves quién ha entrado. Cuando estén todos, pulsas **Dar la salida**.
 3. Todos arrancan a la vez en la Operación 1.
 4. **Deja el panel proyectado**: se actualiza solo con las posiciones en vivo —puesto,
@@ -33,6 +34,23 @@ Juego de estrategia en tiempo real, **pixel art 2D en vista lateral**, ambientad
 > reglas de `firestore.rules`. Se puede cambiar por despliegue con `VITE_ADMIN_KEY`.
 
 Para otra tanda, **Reiniciar sala**. Con `?sala=2b` abres una sala distinta por curso.
+
+### En el teléfono
+
+**Pantalla completa.** En Android basta el botón ⛶ (está en la portada, en el menú de
+pausa y en la esquina de la partida). **En iPhone no existe**: Safari no implementa esa
+API para nada que no sea un vídeo, así que la única vía real es instalar el juego —
+*Compartir (⬆) → Añadir a pantalla de inicio*— y abrirlo desde el icono. Abierto así no
+hay barra de direcciones ni pestañas, y se gana cerca de un 40 % de altura útil, que es
+la diferencia entre ver el campo de batalla y ver una franja. El propio juego lo explica
+en la portada cuando detecta un iPhone.
+
+**Salir y volver.** El botón ☰ de la esquina abre el menú de pausa en cualquier momento,
+y **el reloj de la operación se detiene** mientras está abierto: atender una pregunta en
+clase no cuesta la partida. Desde ahí se puede seguir, reintentar la operación, ganar
+pantalla o salir al menú. Al salir se guarda el intento, y la portada ofrece
+**Continuar** por la operación donde se dejó. Como el teléfono se pasa de mano en mano,
+hay también un **Empezar de cero con otro nombre** que descarta lo guardado.
 
 > Los datos de cada alumno **se borran solos a la hora**. Los resultados de quienes completan la campaña quedan guardados aparte, en un archivo permanente que solo tú puedes consultar desde la consola de Firebase.
 

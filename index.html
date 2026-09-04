@@ -14,7 +14,14 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="description" content="PIXEL WAR — juego de estrategia en tiempo real pixel art ambientado en la Guerra de Vietnam." />
     <title>PIXEL WAR</title>
+    <meta name="apple-mobile-web-app-title" content="Pixel War" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- Instalable en la pantalla de inicio. Es la ÚNICA forma de jugar sin
+         barras del navegador en un iPhone: Safari no implementa la API de
+         pantalla completa para nada que no sea un vídeo. Abierto desde el
+         icono, el sistema no dibuja ni barra de direcciones ni pestañas. -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="stylesheet" href="/src/ui/ui.css" />
   </head>
   <body>
@@ -80,26 +87,44 @@
           </div>
         </footer>
 
-        <!-- ===== Menú principal ===== -->
-        <div id="main-menu" class="screen-overlay menu-screen" data-testid="main-menu" hidden>
-          <div class="menu-panel">
-            <p class="menu-eyebrow">Valle de Ia Drang · Vietnam del Sur</p>
-            <h1 class="menu-title">
-              <span class="menu-title-main">Pixel War</span>
-              <span class="menu-title-byline">by Ronka</span>
+        <!-- ===== Portada ===== -->
+        <!-- Es lo primero que ve un alumno al abrir el enlace: identidad del
+             juego, un botón grande para entrar y, debajo y en pequeño, todo lo
+             demás. Sustituye al antiguo menú de dificultad, que dejó de tener
+             sentido cuando la dificultad pasó a fijarla cada operación. -->
+        <div id="home-screen" class="screen-overlay home" data-testid="home-screen" hidden>
+          <div class="home-panel">
+            <h1 class="home-title">
+              <span class="home-title-main">Pixel War</span>
+              <span class="home-title-byline">by Ronka</span>
             </h1>
+            <p class="home-tagline">
+              Vietnam, 1968. Tres operaciones.<br />
+              Gana quien administra mejor y actúa más rápido.
+            </p>
 
-            <p class="menu-brief" id="menu-brief" data-testid="menu-brief"></p>
-
-            <div class="menu-block">
-              <span class="bar-label">Dificultad</span>
-              <!-- Los botones los genera MainMenu a partir del catálogo de perfiles. -->
-              <div class="menu-difficulties" id="menu-difficulties" role="radiogroup" aria-label="Dificultad"></div>
-              <p class="menu-note" id="menu-note" data-testid="menu-note"></p>
+            <div class="home-actions">
+              <button type="button" class="btn btn-primary btn-huge" id="home-play" data-testid="btn-home-play">
+                JUGAR
+              </button>
+              <button type="button" class="btn btn-huge" id="home-continue" data-testid="btn-home-continue" hidden>
+                Continuar
+              </button>
+              <button type="button" class="btn btn-ghost" id="home-new" data-testid="btn-home-new" hidden>
+                Empezar de cero con otro nombre
+              </button>
             </div>
 
-            <button type="button" class="btn btn-primary menu-play" id="menu-play" data-testid="btn-play">Jugar</button>
-            <p class="menu-foot" id="menu-foot"></p>
+            <div class="home-links">
+              <button type="button" class="btn btn-ghost" id="home-fullscreen" data-testid="btn-home-fullscreen">
+                ⛶ Pantalla completa
+              </button>
+              <button type="button" class="btn btn-ghost" id="home-admin" data-testid="btn-home-admin">
+                Panel del profesor
+              </button>
+            </div>
+
+            <p class="home-install" id="home-install" data-testid="home-install" hidden></p>
           </div>
         </div>
 
@@ -153,6 +178,43 @@
             <div class="board-actions" id="board-actions">
               <button type="button" class="btn btn-primary" id="board-close" data-testid="board-close">
                 Volver
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Menú de pausa ===== -->
+        <!-- Accesible en cualquier momento de la partida: el reloj de la
+             operación se detiene mientras está abierto, así que abrirlo no
+             cuesta la partida. -->
+        <button
+          type="button"
+          id="btn-pause"
+          class="corner-btn pause-btn"
+          data-testid="btn-pause"
+          title="Menú"
+          aria-label="Menú"
+          hidden
+        >
+          <span class="glyph-menu" aria-hidden="true"></span>
+        </button>
+
+        <div id="pause-screen" class="screen-overlay" data-testid="pause-screen" hidden>
+          <div class="panel">
+            <h1 id="pause-title">En pausa</h1>
+            <p id="pause-info" data-testid="pause-info"></p>
+            <div class="panel-actions pause-actions">
+              <button type="button" class="btn btn-primary" id="pause-resume" data-testid="btn-pause-resume">
+                Seguir jugando
+              </button>
+              <button type="button" class="btn" id="pause-retry" data-testid="btn-pause-retry">
+                Reintentar operación
+              </button>
+              <button type="button" class="btn" id="pause-fullscreen" data-testid="btn-pause-fullscreen">
+                ⛶ Pantalla completa
+              </button>
+              <button type="button" class="btn btn-ghost" id="pause-exit" data-testid="btn-pause-exit">
+                Salir al menú
               </button>
             </div>
           </div>

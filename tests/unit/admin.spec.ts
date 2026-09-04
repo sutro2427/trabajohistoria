@@ -8,6 +8,8 @@ import {
 } from '../../src/campaign/adminAccess.js';
 import type { LobbySnapshot, Participant } from '../../src/campaign/ICompetition.js';
 import { TOTAL_LEVELS } from '../../src/domain/balance/levels.js';
+import { LocalStorageProgressRepository } from '../../src/persistence/LocalStorageProgressRepository.js';
+import type { Progress } from '../../src/persistence/Progress.js';
 
 /**
  * El panel del profesor se proyecta delante de la clase, así que sus cifras se
@@ -115,3 +117,64 @@ describe('Acceso de administrador', () => {
     );
   });
 });
+
+describe('Campaña guardada en el navegador', () => {
+  /**
+   * El almacenamiento local lo escribe el navegador del alumno y se edita a
+   * mano en dos clics. Un intento guardado corrupto no puede tumbar el
+   * arranque: en clase, eso sería un alumno mirando una pantalla en blanco.
+   */
+  const load = (raw: unknown): Progress => {
+    const store = new Map<string, string>([['k', JSON.stringify(raw)]]);
+    stubLocalStorage(store);
+    return new LocalStorageProgressRepository('k').load();
+  };
+
+  it('devuelve la campaña guardada cuando es válida', () => {
+    const run = {
+      playerName: 'Ana Rojas',
+      startedAt: 1,
+      currentLevel: 2,
+      results: [],
+      defeats: 0,
+      finishedAt: null,
+    };
+    expect(load({ savedRun: run }).savedRun?.playerName).toBe('Ana Rojas');
+  });
+
+  it('descarta lo que no se puede retomar', () => {
+    // Sin nombre no se puede publicar en la tabla; con `results` que no es un
+    // array, el primer `reduce` del resumen reventaría.
+    expect(load({ savedRun: { playerName: '', currentLevel: 1, results: [] } }).savedRun).toBeNull();
+    expect(
+      load({ savedRun: { playerName: 'Ana', currentLevel: 1, results: 'no' } }).savedRun,
+    ).toBeNull();
+    expect(
+      load({ savedRun: { playerName: 'Ana', currentLevel: 0, results: [] } }).savedRun,
+    ).toBeNull();
+    expect(load({ savedRun: 'basura' }).savedRun).toBeNull();
+    expect(load({}).savedRun).toBeNull();
+  });
+
+  it('una campaña ya terminada no es un intento a medias', () => {
+    const run = {
+      playerName: 'Ana Rojas',
+      startedAt: 1,
+      currentLevel: 3,
+      results: [],
+      defeats: 0,
+      finishedAt: 99,
+    };
+    expect(load({ savedRun: run }).savedRun).toBeNull();
+  });
+});
+
+/** Sustituye `localStorage` por un mapa en memoria durante el test. */
+function stubLocalStorage(store: Map<string, string>): void {
+  const fake = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => void store.set(k, v),
+    removeItem: (k: string) => void store.delete(k),
+  };
+  (globalThis as { localStorage?: unknown }).localStorage = fake;
+}

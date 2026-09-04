@@ -31,6 +31,7 @@ export class LocalStorageProgressRepository implements IProgressRepository {
       // El disco es entrada no confiable: una dificultad que ya no exista
       // (o un valor manipulado a mano) haría fallar el catálogo al arrancar.
       if (!isDifficultyId(merged.difficulty)) merged.difficulty = 'normal';
+      merged.savedRun = sanitizeRun(merged.savedRun);
       return merged;
     } catch {
       return initialProgress();
@@ -52,4 +53,24 @@ export class LocalStorageProgressRepository implements IProgressRepository {
       /* Nada que hacer. */
     }
   }
+}
+
+/**
+ * Valida la campaña guardada antes de devolverla.
+ *
+ * El almacenamiento local es entrada no confiable: lo escribe el navegador del
+ * alumno y se puede editar a mano en dos clics. Un `currentLevel` fuera de
+ * rango o un `results` que no fuera un array reventarían el arranque con un
+ * error opaco, y el alumno solo vería una pantalla en blanco justo cuando la
+ * clase está empezando. Ante cualquier duda se descarta el intento guardado,
+ * que en el peor caso cuesta repetir una operación.
+ */
+function sanitizeRun(run: Progress['savedRun']): Progress['savedRun'] {
+  if (!run || typeof run !== 'object') return null;
+  if (typeof run.playerName !== 'string' || run.playerName.length === 0) return null;
+  if (!Array.isArray(run.results)) return null;
+  if (!Number.isFinite(run.currentLevel) || run.currentLevel < 1) return null;
+  // Una campaña ya terminada no es un intento a medias: no hay nada que retomar.
+  if (run.finishedAt !== null && run.finishedAt !== undefined) return null;
+  return run;
 }

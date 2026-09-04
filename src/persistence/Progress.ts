@@ -1,3 +1,4 @@
+import type { CampaignRun } from '../campaign/CampaignRun.js';
 import type { DifficultyId } from '../domain/balance/difficulty.js';
 
 /**
@@ -25,6 +26,19 @@ export interface Progress {
   bestTimeSec: Record<string, number>;
   /** Partidas ganadas en total. */
   victories: number;
+  /**
+   * Campaña a medias que se puede retomar, o `null` si no hay ninguna.
+   *
+   * Es lo que permite salir al menú en mitad de la segunda operación y volver
+   * donde se dejó, en vez de perder el intento. Se guarda el objeto de campaña
+   * entero —nombre, operación en curso, resultados y derrotas— porque ya es
+   * una estructura plana y serializable: no hace falta ni convertirlo.
+   *
+   * Se borra al completar la campaña y al empezar con otro nombre. En un
+   * teléfono compartido, eso último importa: el siguiente alumno no debe
+   * heredar el intento del anterior.
+   */
+  savedRun: CampaignRun | null;
 }
 
 /** Progreso de una partida nueva. */
@@ -36,5 +50,6 @@ export function initialProgress(): Progress {
     loot: 0,
     bestTimeSec: {},
     victories: 0,
+    savedRun: null,
   };
 }

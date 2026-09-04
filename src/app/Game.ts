@@ -18,6 +18,8 @@ import { FullscreenButton } from '../ui/FullscreenButton.js';
 import { ResultOverlay } from '../ui/ResultOverlay.js';
 import { ScoreBoard } from '../ui/ScoreBoard.js';
 import { AdminPanel } from '../ui/AdminPanel.js';
+import { HomeScreen } from '../ui/HomeScreen.js';
+import { PauseMenu } from '../ui/PauseMenu.js';
 import type { ICompetition, LobbySnapshot } from '../campaign/ICompetition.js';
 import {
   createRun,
@@ -56,9 +58,13 @@ export class Game {
   private readonly loop: GameLoop;
   private readonly overlay = new ResultOverlay();
   private readonly lobby: LobbyScreen;
+  private readonly home: HomeScreen;
+  private readonly pauseMenu: PauseMenu;
   private readonly board: ScoreBoard;
   private readonly input: InputManager;
   private readonly viewport: ViewportManager;
+  /** Raíz de la aplicación; lleva la clase que retira el HUD fuera del combate. */
+  private readonly appRoot = document.getElementById('app');
   /**
    * Panel del profesor. Solo existe si se entró con `?admin`: en la página de
    * un alumno ni siquiera se construye, así que no hay nada que abrir desde la
@@ -87,6 +93,15 @@ export class Game {
   private snapshot: LobbySnapshot = { state: 'lobby', startedAt: null, participants: [] };
   /** Evita arrancar dos veces si la salida llega mientras ya se está jugando. */
   private started = false;
+  /**
+   * `true` con el menú de pausa abierto.
+   *
+   * Es distinto de `interactive`: ese también está en `false` durante los
+   * informes previos y las pantallas de resultado, y de ahí NO se vuelve
+   * pulsando "seguir jugando". Separarlos evita que el menú de pausa pueda
+   * reanudar una partida que ni siquiera había empezado.
+   */
+  private paused = false;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -120,6 +135,20 @@ export class Game {
       onJoin: (name) => this.joinCompetition(name),
       onPlaySolo: () => this.beginCampaign(),
     });
+
+    this.home = new HomeScreen({
+      onPlay: () => this.lobby.show(),
+      onContinue: (run) => this.resumeCampaign(run),
+      onNewPlayer: () => this.forgetSavedRun(),
+      onAdmin: () => this.openAdminPanel(),
+    });
+
+    this.pauseMenu = new PauseMenu({
+      onResume: () => this.resumeBattle(),
+      onRetry: () => this.retryLevel(),
+      onExit: () => this.exitToHome(),
+    });
+    this.pauseMenu.requestOpen = () => this.pauseBattle();
 
     if (options.admin) {
       // Los mismos dos controles siguen estando en la tabla de posiciones: el
@@ -164,15 +193,126 @@ export class Game {
   /** Arranca la aplicación en la pantalla de acceso. */
   start(): void {
     this.levelId = 1;
+    this.setMenuMode(true);
     this.buildSession();
     this.loop.start();
 
     this.competition.subscribe((snapshot) => this.onLobbyChange(snapshot));
 
     // El profesor no entra a jugar: su pantalla es el cuadro de mando. Si no
-    // es una sesión de administrador, se abre la pantalla de acceso normal.
+    // es una sesión de administrador, se abre la portada.
     if (this.admin) this.admin.open();
-    else this.lobby.show();
+    else this.home.show(this.progressRepo.load().savedRun);
+  }
+
+  // -------------------------------------------------------------------------
+  // Portada
+  // -------------------------------------------------------------------------
+
+  /**
+   * Retoma una campaña guardada por la operación donde se dejó.
+   *
+   * No se vuelve a entrar en la sala: el alumno ya se identificó en su
+   * momento, y volver a pedirle el nombre sería pedirle que demuestre otra vez
+   * quién es. Sí se vuelve a publicar su progreso, para que reaparezca en la
+   * tabla si la sala se reinició mientras estaba fuera.
+   */
+  private resumeCampaign(run: CampaignRun): void {
+    this.run = run;
+    this.board.setPlayerName(run.playerName);
+    void this.competition.publish(toScoreEntry(run));
+
+    this.started = true;
+    this.levelId = Math.min(TOTAL_LEVELS, Math.max(1, run.currentLevel));
+    this.board.setToggleVisible(true);
+    this.showBriefing();
+  }
+
+  /**
+   * Descarta la campaña guardada y vuelve a pedir nombre.
+   *
+   * En clase el teléfono se pasa de mano en mano: sin esto, el segundo alumno
+   * heredaría el intento del primero y la tabla registraría sus operaciones a
+   * nombre ajeno.
+   */
+  private forgetSavedRun(): void {
+    this.saveRun(null);
+    this.run = null;
+    this.lobby.show();
+  }
+
+  /** Abre el panel del profesor recargando en modo administrador. */
+  private openAdminPanel(): void {
+    const url = new URL(window.location.href);
+    url.searchParams.set('admin', '');
+    // `set('admin','')` deja "?admin=" y la puerta lo trata como sin clave:
+    // pedirá la contraseña, que es justo lo que se quiere desde la portada.
+    window.location.href = url.toString();
+  }
+
+  /** Guarda (o borra) el intento en curso para poder retomarlo. */
+  private saveRun(run: CampaignRun | null): void {
+    const progress = this.progressRepo.load();
+    progress.savedRun = run;
+    this.progressRepo.save(progress);
+  }
+
+  // -------------------------------------------------------------------------
+  // Pausa
+  // -------------------------------------------------------------------------
+
+  /** `true` si hay una operación en curso que se pueda pausar. */
+  private inBattle(): boolean {
+    return this.started && this.menuTime === null && !this.session.world.finished;
+  }
+
+  private pauseBattle(): void {
+    if (!this.inBattle() || this.paused) return;
+    this.paused = true;
+    this.interactive = false;
+    this.pauseMenu.show(this.session.level, this.session.world.elapsed);
+  }
+
+  private resumeBattle(): void {
+    if (!this.paused) return;
+    this.paused = false;
+    this.interactive = true;
+    this.pauseMenu.hide();
+  }
+
+  private retryLevel(): void {
+    this.paused = false;
+    this.pauseMenu.hide();
+    this.beginBattle();
+  }
+
+  /**
+   * Sale al menú conservando lo conseguido.
+   *
+   * La operación en curso se pierde —se estaba jugando— pero las ya superadas
+   * no: se guarda el intento y al volver se retoma por la operación en la que
+   * estaba. Perder tres minutos por atender una pregunta en clase sería un
+   * castigo absurdo.
+   */
+  private exitToHome(): void {
+    this.paused = false;
+    this.interactive = false;
+    this.started = false;
+    this.menuTime = 0;
+
+    if (this.run && !isComplete(this.run)) this.saveRun(this.run);
+
+    this.pauseMenu.hide();
+    this.pauseMenu.setToggleVisible(false);
+    this.board.setToggleVisible(false);
+    this.overlay.hide();
+    this.setMenuMode(true);
+    this.home.show(this.progressRepo.load().savedRun);
+  }
+
+  /** Entra o sale del modo menú, que retira el HUD y la barra de mando. */
+  private setMenuMode(active: boolean): void {
+    this.appRoot?.classList.toggle('is-menu', active);
   }
 
   // -------------------------------------------------------------------------
@@ -222,6 +362,7 @@ export class Game {
     this.lobby.hide();
     this.board.setToggleVisible(true);
     this.levelId = 1;
+    this.saveRun(this.run);
     this.showBriefing();
   }
 
@@ -289,12 +430,19 @@ export class Game {
     this.seed = this.fixedSeed ?? Math.floor(Math.random() * 1_000_000);
     this.buildSession();
     this.menuTime = null;
+    this.paused = false;
     this.interactive = true;
+    this.setMenuMode(false);
+    // El botón de pausa solo existe mientras hay algo que pausar: enseñarlo en
+    // un informe previo invitaría a pulsarlo para nada.
+    this.pauseMenu.setToggleVisible(true);
   }
 
   /** Cierra el nivel: registra el resultado, publica y decide qué viene después. */
   private onLevelEnded({ won, loot, elapsed }: { won: boolean; loot: number; elapsed: number }): void {
     this.interactive = false;
+    this.paused = false;
+    this.pauseMenu.setToggleVisible(false);
     const world = this.session.world;
     const level = this.session.level;
     const team = world.teams.US;
@@ -303,6 +451,7 @@ export class Game {
     if (!won) {
       if (run) {
         recordDefeat(run);
+        this.saveRun(run);
         void this.competition.publish(toScoreEntry(run));
       }
       const reason = world.structureOf('US')
@@ -334,6 +483,7 @@ export class Game {
         kills: team.kills,
         spentOnPowers: Math.round(team.spentOnPowers),
       });
+      this.saveRun(isComplete(run) ? null : run);
       void this.competition.publish(toScoreEntry(run));
     }
 
@@ -364,6 +514,7 @@ export class Game {
         // Volver a intentarlo: se conserva el nombre y el histórico de la sala,
         // pero la campaña empieza de cero.
         this.run = createRun(run.playerName);
+        this.saveRun(this.run);
         this.levelId = 1;
         this.showBriefing();
       },
@@ -466,6 +617,7 @@ export class Game {
       this.run = createRun(name);
       this.board.setPlayerName(name);
     }
+    this.home.hide();
     this.lobby.hide();
     this.overlay.hide();
     this.started = true;
