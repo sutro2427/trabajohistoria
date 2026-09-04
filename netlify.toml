@@ -5,6 +5,13 @@
 [build.environment]
   NODE_VERSION = "22"
 
+# Ruta corta para el juego de cartas (debe ir ANTES del comodín de la SPA:
+# Netlify aplica las reglas en orden y /* se quedaría con /vietnam).
+[[redirects]]
+  from = "/vietnam"
+  to = "/timeline.html"
+  status = 200
+
 # SPA de una sola página: cualquier ruta sirve el index.
 [[redirects]]
   from = "/*"

@@ -11,3 +11,5 @@ playwright-report/
 .env.*
 !.env.example
 .claude/
+dist-timeline/
+linea-tiempo-vietnam.zip

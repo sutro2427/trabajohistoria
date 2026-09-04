@@ -244,6 +244,32 @@ revela la fecha.
 - Pensado para **pantalla apaisada** (proyector o móvil girado), con botón de pantalla completa
   y aviso de rotación en vertical.
 
+### Publicarlo como enlace propio
+
+`scripts/build-timeline-site.mjs` genera `dist-timeline/`: una carpeta estática con el juego
+como portada (`index.html`), el manifiesto para instalarlo en el móvil, los iconos y la imagen
+de vista previa que sale al pegar el enlace en WhatsApp.
+
+```bash
+node scripts/build-timeline-site.mjs                      # → dist-timeline/
+node scripts/build-timeline-site.mjs https://otro.netlify.app   # otro dominio
+```
+
+Sitio de destino: **`linea-tiempo-vietnam`** → https://linea-tiempo-vietnam.netlify.app
+
+Dos formas de publicarlo:
+
+1. **Enlazando el repositorio** (se actualiza solo en cada `push`).
+   En Netlify → proyecto `linea-tiempo-vietnam` → *Build & deploy* → *Link repository* →
+   `sutro2427/trabajohistoria`, con:
+   - rama: `claude/vietnam-timeline-game-q46qaf`
+   - build command: `node scripts/build-timeline-site.mjs`
+   - publish directory: `dist-timeline`
+2. **Arrastrando la carpeta** `dist-timeline/` (o su `.zip`) a la zona de *Deploys* del proyecto.
+
+Además, en el sitio principal el juego queda servido en **`/vietnam`** además de
+`/timeline.html`, por la regla de reescritura de `netlify.toml`.
+
 ### Precisión histórica
 
 Tres cartas no son fechas puntuales y el juego lo dice al colocarlas: el **inicio de la guerra
