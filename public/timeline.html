@@ -1,0 +1,1370 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#0a0c08">
+<meta name="description" content="Juego educativo de línea de tiempo sobre la Guerra de Vietnam: coloca cada hecho histórico en su lugar cronológico.">
+<title>Línea de Tiempo · Guerra de Vietnam</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   LÍNEA DE TIEMPO — GUERRA DE VIETNAM
+   Juego de mesa digital. Un solo archivo: HTML + CSS + JS.
+   ------------------------------------------------------------
+   Secciones del CSS:
+     1. Tokens de diseño y reset
+     2. Escenografía (mesa, selva, atardecer)
+     3. Pantallas y transiciones
+     4. Portada
+     5. HUD
+     6. Línea de tiempo (raíl, nodos, huecos)
+     7. Cartas
+     8. Mano y arrastre
+     9. Panel de veredicto
+    10. Resultados
+    11. Utilidades, accesibilidad y responsive
+   ============================================================ */
+
+/* ---------- 1. Tokens de diseño ---------- */
+:root{
+  --bg:#0a0c08;
+  --felt-1:#22301d;
+  --felt-2:#0c110a;
+  --felt-edge:#050704;
+
+  --amber:#e9a93c;
+  --amber-soft:#f5cd84;
+  --amber-dim:#8a6524;
+  --red:#c0392b;
+  --red-deep:#6f2016;
+  --green:#7fae4e;
+  --green-deep:#2f4a1d;
+
+  --paper:#e7dabc;
+  --paper-2:#d5c39c;
+  --paper-3:#c2ad83;
+  --ink:#221d14;
+  --ink-soft:#4a4030;
+  --line:#7a6640;
+
+  --font-title:'Oswald','Arial Narrow',Impact,sans-serif;
+  --font-body:'Special Elite','Courier New',Courier,monospace;
+
+  --card-w:clamp(112px,15vw,168px);
+  --card-h:clamp(148px,34vh,232px);
+  --radius:10px;
+  --shadow-card:0 10px 22px rgba(0,0,0,.55), 0 2px 0 rgba(0,0,0,.4);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--paper);
+  font-family:var(--font-body);
+  overflow:hidden;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+h1,h2,h3{font-family:var(--font-title);font-weight:600;margin:0;letter-spacing:.04em}
+
+/* ---------- 2. Escenografía ---------- */
+/* Mesa de juego: fieltro oscuro con viñeta y textura sutil de tejido. */
+.scene{position:fixed;inset:0;z-index:0;overflow:hidden}
+.scene__felt{
+  position:absolute;inset:0;
+  background:
+    radial-gradient(120% 90% at 50% 22%, rgba(233,169,60,.10), transparent 62%),
+    radial-gradient(140% 120% at 50% 48%, var(--felt-1) 0%, var(--felt-2) 58%, var(--felt-edge) 100%);
+}
+.scene__felt::after{
+  /* trama del tapete */
+  content:'';position:absolute;inset:0;opacity:.32;mix-blend-mode:overlay;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(-45deg, rgba(0,0,0,.16) 0 1px, transparent 1px 3px);
+}
+/* Sol de atardecer sobre la selva */
+.scene__sun{
+  position:absolute;left:50%;top:8%;width:min(46vh,340px);aspect-ratio:1;
+  transform:translateX(-50%);border-radius:50%;
+  background:radial-gradient(circle, rgba(255,190,90,.55) 0%, rgba(214,110,40,.28) 42%, transparent 70%);
+  filter:blur(6px);
+}
+.scene__hills{position:absolute;left:0;right:0;bottom:0;width:100%;height:58%;opacity:.55}
+.scene__haze{
+  position:absolute;inset:0;
+  background:linear-gradient(to bottom, rgba(120,60,20,.10), transparent 40%, rgba(0,0,0,.55) 100%);
+}
+.scene__grain{
+  position:absolute;inset:-20%;opacity:.06;pointer-events:none;
+  background-image:radial-gradient(rgba(255,255,255,.9) .5px, transparent .5px);
+  background-size:3px 3px;
+  animation:grain 1.2s steps(3) infinite;
+}
+@keyframes grain{
+  0%{transform:translate(0,0)}33%{transform:translate(-2%,1%)}66%{transform:translate(1%,-2%)}100%{transform:translate(0,0)}
+}
+/* Helicóptero lejano cruzando el horizonte */
+.scene__heli{
+  position:absolute;top:11%;left:-10%;width:46px;color:rgba(8,10,6,.45);
+  animation:flyby 46s linear infinite;
+}
+.scene__heli--2{top:17%;width:30px;opacity:.45;animation-duration:66s;animation-delay:-22s}
+@keyframes flyby{
+  0%{transform:translateX(-10vw) translateY(0)}
+  50%{transform:translateX(55vw) translateY(-14px)}
+  100%{transform:translateX(120vw) translateY(4px)}
+}
+@media (prefers-reduced-motion:reduce){
+  .scene__grain,.scene__heli{animation:none}
+}
+
+/* ---------- 3. Pantallas ---------- */
+#app{position:relative;z-index:1;height:100dvh;display:flex;flex-direction:column}
+.screen{
+  position:absolute;inset:0;display:none;flex-direction:column;
+  padding:clamp(8px,1.6vh,18px) clamp(10px,2vw,26px);
+  padding-top:max(clamp(8px,1.6vh,18px), env(safe-area-inset-top));
+  padding-bottom:max(clamp(8px,1.6vh,18px), env(safe-area-inset-bottom));
+}
+.screen.is-active{display:flex;animation:fadeUp .45s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ---------- 4. Portada ---------- */
+#screen-intro{align-items:center;justify-content:center;overflow-y:auto}
+.intro{
+  width:min(1080px,100%);display:grid;gap:clamp(10px,2vh,22px);
+  grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-items:center;
+}
+.intro__brand{text-align:left}
+.intro__kicker{
+  font-family:var(--font-title);letter-spacing:.42em;text-transform:uppercase;
+  font-size:clamp(9px,1.4vw,12px);color:var(--amber-dim);margin:0 0 6px;
+}
+.intro__title{
+  font-size:clamp(28px,5.4vw,62px);line-height:.94;text-transform:uppercase;
+  color:var(--paper);text-shadow:0 3px 0 rgba(0,0,0,.5),0 0 34px rgba(233,169,60,.22);
+}
+.intro__title em{display:block;font-style:normal;color:var(--amber);
+  -webkit-text-stroke:1px rgba(0,0,0,.35)}
+.intro__rule{height:3px;margin:clamp(8px,1.6vh,16px) 0;max-width:340px;
+  background:linear-gradient(90deg,var(--red),var(--amber),transparent)}
+.intro__lead{font-size:clamp(11px,1.55vw,14px);line-height:1.6;color:#cbbd9d;max-width:46ch;margin:0}
+.intro__tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:clamp(8px,1.6vh,14px)}
+.tag{
+  font-family:var(--font-title);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  border:1px solid rgba(233,169,60,.35);color:var(--amber-soft);
+  padding:3px 9px;border-radius:999px;background:rgba(0,0,0,.3);
+}
+
+/* Panel de instrucciones con aspecto de documento desclasificado */
+.dossier{
+  background:linear-gradient(150deg,var(--paper) 0%,var(--paper-2) 100%);
+  color:var(--ink);border-radius:4px;padding:clamp(12px,2vh,20px);
+  box-shadow:var(--shadow-card);position:relative;overflow:hidden;
+  transform:rotate(-.5deg);
+}
+.dossier::before{
+  content:'';position:absolute;inset:6px;border:1px dashed rgba(34,29,20,.35);border-radius:2px;pointer-events:none;
+}
+.dossier::after{
+  /* sello */
+  content:'ARCHIVO · 1954-1975';position:absolute;right:-34px;top:16px;
+  transform:rotate(34deg);font-family:var(--font-title);letter-spacing:.2em;font-size:11px;
+  color:rgba(192,57,43,.5);border:2px solid rgba(192,57,43,.4);padding:3px 40px;
+}
+.dossier h2{font-size:clamp(14px,2vw,19px);text-transform:uppercase;letter-spacing:.1em;color:var(--red-deep)}
+.dossier ol{margin:10px 0 0;padding-left:1.1em;font-size:clamp(10px,1.4vw,13px);line-height:1.65}
+.dossier li{margin-bottom:5px}
+.dossier li b{color:var(--red-deep)}
+.dossier__note{
+  margin:10px 0 0;font-size:clamp(9px,1.2vw,11px);line-height:1.5;color:var(--ink-soft);
+  border-top:1px solid rgba(34,29,20,.2);padding-top:8px;
+}
+.intro__actions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center}
+
+/* Botones */
+.btn{
+  font-family:var(--font-title);text-transform:uppercase;letter-spacing:.16em;
+  padding:clamp(9px,1.5vh,14px) clamp(18px,3vw,34px);border-radius:6px;
+  border:1px solid rgba(0,0,0,.5);position:relative;transition:transform .12s ease,box-shadow .12s ease,filter .12s ease;
+  font-size:clamp(12px,1.6vw,16px);
+}
+.btn--primary{
+  background:linear-gradient(180deg,var(--amber) 0%,#c8801f 100%);color:#1c1408;
+  box-shadow:0 5px 0 #6f4712, 0 12px 22px rgba(0,0,0,.45);font-weight:700;
+}
+.btn--primary:hover{filter:brightness(1.07)}
+.btn--primary:active{transform:translateY(4px);box-shadow:0 1px 0 #6f4712,0 6px 12px rgba(0,0,0,.4)}
+.btn--ghost{
+  background:rgba(0,0,0,.35);border:1px solid rgba(233,169,60,.4);color:var(--amber-soft);
+}
+.btn--ghost:hover{background:rgba(233,169,60,.14)}
+.btn--sm{padding:6px 12px;font-size:11px;letter-spacing:.12em}
+
+/* ---------- 5. HUD ---------- */
+.hud{
+  display:flex;align-items:center;gap:clamp(6px,1.2vw,14px);
+  padding:6px clamp(6px,1.4vw,14px);border-radius:8px;flex:0 0 auto;
+  background:linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,.3));
+  border:1px solid rgba(233,169,60,.16);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+}
+.hud__title{
+  font-family:var(--font-title);text-transform:uppercase;letter-spacing:.18em;
+  font-size:clamp(9px,1.2vw,13px);color:var(--amber-dim);white-space:nowrap;
+}
+.hud__stats{display:flex;gap:clamp(6px,1.2vw,16px);margin-left:auto;align-items:center}
+.stat{text-align:center;min-width:44px}
+.stat__label{
+  display:block;font-family:var(--font-title);font-size:9px;letter-spacing:.16em;
+  text-transform:uppercase;color:#8d8467;
+}
+.stat__value{display:block;font-family:var(--font-title);font-size:clamp(15px,2.2vw,22px);line-height:1;color:var(--paper)}
+.stat--score .stat__value{color:var(--amber)}
+.stat--hit .stat__value{color:var(--green)}
+.stat--miss .stat__value{color:var(--red)}
+.stat__value.is-bump{animation:bump .4s ease}
+@keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
+.hud__tools{display:flex;gap:4px}
+.icon-btn{
+  width:30px;height:30px;display:grid;place-items:center;border-radius:6px;
+  border:1px solid rgba(233,169,60,.25);background:rgba(0,0,0,.35);color:var(--amber-soft);
+}
+.icon-btn:hover{background:rgba(233,169,60,.16)}
+.icon-btn svg{width:16px;height:16px}
+.icon-btn.is-off{opacity:.4}
+
+/* Barra de progreso del mazo */
+.progress{flex:0 0 auto;height:4px;border-radius:4px;background:rgba(0,0,0,.5);margin:6px 0 0;overflow:hidden}
+.progress__bar{height:100%;width:0;background:linear-gradient(90deg,var(--red),var(--amber));transition:width .5s ease}
+
+/* ---------- 6. Línea de tiempo ---------- */
+.board{
+  flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:center;
+  position:relative;margin-top:clamp(4px,1vh,10px);
+}
+.board__rail{
+  overflow-x:auto;overflow-y:hidden;padding:26px 0 2px;
+  scrollbar-width:thin;scrollbar-color:var(--amber-dim) transparent;
+  -webkit-overflow-scrolling:touch;scroll-behavior:smooth;
+}
+.board__rail::-webkit-scrollbar{height:6px}
+.board__rail::-webkit-scrollbar-thumb{background:var(--amber-dim);border-radius:99px}
+.board__rail::-webkit-scrollbar-track{background:rgba(0,0,0,.35)}
+
+.track{
+  display:flex;align-items:flex-end;position:relative;
+  min-width:min-content;width:max-content;margin:0 auto;padding:0 clamp(8px,3vw,40px) 0;
+}
+/* eje cronológico */
+.track::before{
+  content:'';position:absolute;left:0;right:0;bottom:6px;height:2px;
+  background:linear-gradient(90deg,transparent,var(--line) 6%,var(--line) 94%,transparent);
+  box-shadow:0 0 12px rgba(233,169,60,.18);
+}
+.track__end{
+  flex:0 0 auto;align-self:flex-end;display:flex;align-items:center;height:14px;
+  font-family:var(--font-title);font-size:9px;letter-spacing:.18em;color:var(--amber-dim);
+  text-transform:uppercase;padding:0 4px;white-space:nowrap;
+}
+
+/* Nodo: carta + tallo + punto sobre el eje */
+.node{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;width:var(--card-w)}
+.node__stem{width:2px;height:14px;background:var(--line)}
+.node__dot{
+  width:12px;height:12px;border-radius:50%;background:var(--amber);
+  border:2px solid #17190f;box-shadow:0 0 10px rgba(233,169,60,.6);
+}
+.node.is-new .node__dot{animation:pulseDot 1.1s ease 2}
+@keyframes pulseDot{0%,100%{transform:scale(1)}50%{transform:scale(1.6)}}
+.node.is-wrong .node__dot{background:var(--red);box-shadow:0 0 12px rgba(192,57,43,.8)}
+
+/* Hueco donde se suelta la carta */
+.slot{
+  flex:0 0 auto;width:clamp(24px,3.4vw,38px);
+  height:calc(var(--card-h) + 30px);
+  align-self:flex-end;position:relative;display:grid;place-items:center;
+  transition:width .18s ease;border-radius:8px;
+}
+.slot::before{
+  content:'';position:absolute;top:8px;bottom:20px;width:2px;
+  background:repeating-linear-gradient(180deg,rgba(233,169,60,.5) 0 6px,transparent 6px 12px);
+  opacity:.5;transition:opacity .18s ease;
+}
+.slot__plus{
+  position:relative;z-index:1;width:22px;height:22px;border-radius:50%;
+  border:1px dashed rgba(233,169,60,.6);color:var(--amber);
+  display:grid;place-items:center;font-family:var(--font-title);font-size:14px;line-height:1;
+  background:rgba(10,12,8,.75);transition:transform .18s ease,background .18s ease;
+}
+.slot:hover,.slot:focus-visible{outline:none;width:clamp(52px,7vw,84px)}
+.slot:hover::before,.slot:focus-visible::before{opacity:1}
+.slot:hover .slot__plus,.slot:focus-visible .slot__plus{transform:scale(1.25);background:rgba(233,169,60,.22)}
+.slot.is-over{width:clamp(64px,9vw,100px)}
+.slot.is-over::before{opacity:1;background:rgba(233,169,60,.85);box-shadow:0 0 14px rgba(233,169,60,.9)}
+.slot.is-over .slot__plus{transform:scale(1.45);background:var(--amber);color:#1c1408;border-style:solid}
+body.is-locked .slot{pointer-events:none;opacity:.35}
+
+/* Etiqueta "aquí iba" tras un error */
+.ghost-mark{
+  position:absolute;top:-22px;bottom:auto;left:50%;transform:translateX(-50%);
+  font-family:var(--font-title);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:#fff;background:var(--red);padding:2px 6px;border-radius:4px;white-space:nowrap;
+  box-shadow:0 4px 10px rgba(0,0,0,.5);animation:markIn .3s ease both;z-index:3;max-width:100%;
+}
+
+@keyframes markIn{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+
+/* ---------- 7. Cartas ---------- */
+.card{
+  width:var(--card-w);height:var(--card-h);border-radius:var(--radius);
+  position:relative;overflow:hidden;color:var(--ink);
+  background:linear-gradient(155deg,var(--paper) 0%,var(--paper-2) 62%,var(--paper-3) 100%);
+  box-shadow:var(--shadow-card);
+  display:flex;flex-direction:column;
+  border:1px solid rgba(34,29,20,.45);
+  user-select:none;
+}
+/* textura de papel envejecido */
+.card::after{
+  content:'';position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background:
+    radial-gradient(60% 40% at 15% 8%, rgba(120,90,40,.20), transparent 70%),
+    radial-gradient(50% 40% at 90% 92%, rgba(90,60,20,.24), transparent 70%),
+    repeating-linear-gradient(92deg, rgba(160,130,80,.07) 0 2px, transparent 2px 5px);
+}
+.card__band{
+  flex:0 0 auto;display:flex;align-items:center;gap:6px;
+  padding:5px 8px;background:linear-gradient(180deg,#2c3320,#1b2015);color:var(--amber-soft);
+  border-bottom:2px solid rgba(0,0,0,.5);
+}
+.card__band svg{width:clamp(15px,2vw,20px);height:clamp(15px,2vw,20px);flex:0 0 auto}
+.card__date{
+  font-family:var(--font-title);font-size:clamp(11px,1.6vw,15px);letter-spacing:.06em;
+  line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.card__year{font-family:var(--font-title);font-size:clamp(17px,2.6vw,25px);line-height:1;color:var(--amber)}
+.card__body{flex:1 1 auto;padding:7px 9px;display:flex;flex-direction:column;gap:4px;min-height:0;position:relative;z-index:1}
+.card__title{
+  font-family:var(--font-title);font-weight:600;text-transform:uppercase;letter-spacing:.02em;
+  font-size:clamp(10px,1.35vw,13.5px);line-height:1.14;color:var(--ink);
+  overflow-wrap:anywhere;hyphens:auto;
+}
+.card__desc{
+  font-size:clamp(8.5px,1.1vw,11px);line-height:1.34;color:var(--ink-soft);margin:0;
+  overflow:hidden;
+}
+.card__foot{
+  flex:0 0 auto;padding:4px 8px;border-top:1px dashed rgba(34,29,20,.28);
+  font-family:var(--font-title);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:rgba(34,29,20,.5);display:flex;justify-content:space-between;align-items:center;gap:4px;
+  white-space:nowrap;
+}
+.card__mark{font-size:11px;letter-spacing:0}
+.card--hit .card__mark{color:var(--green-deep)}
+.card--miss .card__mark{color:var(--red)}
+/* estados */
+.card--hit{box-shadow:var(--shadow-card),0 0 0 2px var(--green),0 0 22px rgba(127,174,78,.4)}
+.card--miss{box-shadow:var(--shadow-card),0 0 0 2px var(--red),0 0 22px rgba(192,57,43,.45)}
+.card--anchor .card__band{background:linear-gradient(180deg,#3a2a18,#241a10)}
+.node.is-new .card{animation:flipIn .6s cubic-bezier(.4,.05,.2,1) both}
+@keyframes flipIn{
+  0%{transform:perspective(700px) rotateY(-92deg) translateY(-14px);opacity:0}
+  60%{transform:perspective(700px) rotateY(12deg);opacity:1}
+  100%{transform:none;opacity:1}
+}
+.node.is-shake .card{animation:shake .5s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px) rotate(-1.5deg)}40%{transform:translateX(6px) rotate(1.5deg)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+
+/* Carta de la mano: sin fecha, con interrogante */
+.card--hand{
+  cursor:grab;touch-action:none;
+  transition:transform .16s ease,box-shadow .16s ease;
+  box-shadow:var(--shadow-card),0 0 0 1px rgba(233,169,60,.35),0 0 34px rgba(233,169,60,.18);
+}
+.card--hand:hover{transform:translateY(-5px) rotate(-.6deg)}
+.card--hand .card__band{background:linear-gradient(180deg,#4a2118,#2a120c);color:var(--amber-soft)}
+.card--hand .card__unknown{
+  font-family:var(--font-title);font-size:clamp(15px,2.4vw,22px);color:var(--amber);letter-spacing:.16em;
+}
+.card--dragging{opacity:.28;filter:grayscale(.4)}
+.card__stamp{
+  position:absolute;right:6px;bottom:26px;z-index:2;
+  font-family:var(--font-title);font-size:9px;letter-spacing:.18em;color:rgba(192,57,43,.55);
+  border:2px solid rgba(192,57,43,.45);border-radius:3px;padding:1px 6px;transform:rotate(-9deg);
+  text-transform:uppercase;
+}
+/* Clon que sigue al dedo/ratón */
+#drag-ghost{
+  position:fixed;z-index:60;pointer-events:none;left:0;top:0;
+  transform-origin:center;filter:drop-shadow(0 18px 26px rgba(0,0,0,.65));
+  transition:none;
+}
+#drag-ghost .card{transform:rotate(-3deg) scale(1.04)}
+
+/* ---------- 8. Zona de mano ---------- */
+.hand{
+  flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:clamp(10px,2.4vw,28px);
+  padding:clamp(6px,1.4vh,14px) 10px 0;position:relative;
+}
+.hand__deck{
+  width:calc(var(--card-w) * .72);height:calc(var(--card-h) * .62);border-radius:8px;
+  position:relative;flex:0 0 auto;display:grid;place-items:center;
+  background:linear-gradient(150deg,#2b3320,#141a10);
+  border:1px solid rgba(233,169,60,.28);box-shadow:0 8px 18px rgba(0,0,0,.5);
+}
+.hand__deck::before,.hand__deck::after{
+  content:'';position:absolute;inset:0;border-radius:8px;z-index:-1;
+  background:linear-gradient(150deg,#242c1b,#10150c);border:1px solid rgba(0,0,0,.6);
+}
+.hand__deck::before{transform:translate(4px,4px)}
+.hand__deck::after{transform:translate(8px,8px)}
+.hand__deck-inner{text-align:center;color:var(--amber-dim)}
+.hand__deck-inner svg{width:26px;height:26px;opacity:.7}
+.hand__deck-count{display:block;font-family:var(--font-title);font-size:18px;color:var(--amber-soft);line-height:1}
+.hand__deck-label{display:block;font-family:var(--font-title);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+.hand__hint{
+  max-width:22ch;font-size:clamp(9px,1.15vw,11.5px);line-height:1.5;color:#a99a78;text-align:left;
+}
+.hand__hint b{color:var(--amber-soft)}
+@media (max-width:820px){.hand__hint{display:none}}
+
+/* ---------- 9. Panel de veredicto ---------- */
+.verdict{
+  position:absolute;left:50%;bottom:0;transform:translate(-50%,120%);
+  width:min(760px,96%);z-index:40;
+  background:linear-gradient(180deg,rgba(18,22,14,.98),rgba(8,10,6,.99));
+  border:1px solid rgba(233,169,60,.3);border-radius:12px 12px 0 0;
+  box-shadow:0 -12px 40px rgba(0,0,0,.7);
+  padding:clamp(8px,1.6vh,16px) clamp(12px,2vw,22px);
+  transition:transform .35s cubic-bezier(.2,.8,.3,1);
+  display:flex;align-items:center;gap:clamp(10px,2vw,20px);
+  max-height:52dvh;overflow-y:auto;
+}
+.verdict.is-open{transform:translate(-50%,0)}
+.verdict__mark{
+  flex:0 0 auto;width:clamp(38px,6vw,58px);height:clamp(38px,6vw,58px);border-radius:50%;
+  display:grid;place-items:center;font-family:var(--font-title);font-size:clamp(20px,3vw,30px);
+  border:2px solid currentColor;
+}
+.verdict--ok .verdict__mark{color:var(--green);background:rgba(127,174,78,.14)}
+.verdict--bad .verdict__mark{color:var(--red);background:rgba(192,57,43,.14)}
+.verdict__text{flex:1 1 auto;min-width:0}
+.verdict__head{
+  font-family:var(--font-title);text-transform:uppercase;letter-spacing:.14em;
+  font-size:clamp(12px,1.8vw,17px);
+}
+.verdict--ok .verdict__head{color:var(--green)}
+.verdict--bad .verdict__head{color:var(--red)}
+.verdict__date{font-family:var(--font-title);color:var(--amber);font-size:clamp(11px,1.5vw,14px);letter-spacing:.06em}
+.verdict__fact{margin:4px 0 0;font-size:clamp(9.5px,1.2vw,12px);line-height:1.5;color:#c2b493}
+.verdict__points{
+  flex:0 0 auto;text-align:center;font-family:var(--font-title);
+  color:var(--amber);font-size:clamp(15px,2.4vw,22px);
+}
+.verdict__points span{display:block;font-size:9px;letter-spacing:.16em;color:var(--amber-dim);text-transform:uppercase}
+
+/* ---------- 10. Resultados ---------- */
+#screen-end{align-items:center;justify-content:center;overflow-y:auto}
+.results{width:min(1000px,100%);display:flex;flex-direction:column;gap:clamp(8px,1.6vh,16px);align-items:center}
+.results__rank{
+  font-family:var(--font-title);text-transform:uppercase;letter-spacing:.3em;
+  font-size:clamp(9px,1.3vw,12px);color:var(--amber-dim);
+}
+.results__title{font-size:clamp(22px,4.4vw,46px);text-transform:uppercase;color:var(--amber);line-height:1}
+.results__grid{display:flex;flex-wrap:wrap;gap:clamp(8px,1.6vw,18px);justify-content:center}
+.result-card{
+  min-width:clamp(88px,13vw,130px);padding:clamp(8px,1.6vh,16px) clamp(10px,2vw,20px);
+  border-radius:10px;text-align:center;
+  background:linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,.28));
+  border:1px solid rgba(233,169,60,.22);
+}
+.result-card__label{
+  display:block;font-family:var(--font-title);font-size:9.5px;letter-spacing:.2em;
+  text-transform:uppercase;color:#8d8467;margin-bottom:4px;
+}
+.result-card__value{display:block;font-family:var(--font-title);font-size:clamp(22px,4vw,40px);line-height:1}
+.result-card--score .result-card__value{color:var(--amber)}
+.result-card--hit .result-card__value{color:var(--green)}
+.result-card--miss .result-card__value{color:var(--red)}
+.results__review{
+  width:100%;max-height:min(30dvh,230px);overflow-y:auto;overscroll-behavior:contain;
+  display:flex;flex-wrap:wrap;gap:6px;justify-content:center;
+  -webkit-mask-image:linear-gradient(to bottom,#000 82%,transparent 100%);
+          mask-image:linear-gradient(to bottom,#000 82%,transparent 100%);
+  padding:8px;border-radius:8px;background:rgba(0,0,0,.3);border:1px solid rgba(233,169,60,.14);
+}
+.review-chip{
+  display:flex;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;
+  background:rgba(233,169,60,.08);border:1px solid rgba(233,169,60,.22);
+  font-size:clamp(8.5px,1.05vw,11px);color:#cbbd9d;
+}
+.review-chip b{font-family:var(--font-title);color:var(--amber);letter-spacing:.04em}
+.review-chip--miss{border-color:rgba(192,57,43,.5);background:rgba(192,57,43,.1)}
+.review-chip--hit{border-color:rgba(127,174,78,.45);background:rgba(127,174,78,.09)}
+.review-chip__mark{font-family:var(--font-title)}
+.results__caption{font-size:clamp(9px,1.15vw,11.5px);color:#8d8467;text-align:center;margin:0}
+
+/* ---------- 10b. Ajustes finos y correcciones de capas ---------- */
+/* El hueco es un <button>: hay que neutralizar los estilos por defecto. */
+.slot{padding:0;border:0;background:transparent;appearance:none}
+/* Marca del hueco equivocado mientras el juego recoloca la carta. */
+.slot.is-wrong-drop{width:clamp(64px,9vw,100px)}
+.slot.is-wrong-drop::before{opacity:1;background:var(--red);box-shadow:0 0 14px rgba(192,57,43,.8)}
+.slot.is-wrong-drop .slot__plus{background:var(--red);color:#fff;border-style:solid;transform:scale(1.35)}
+.slot.is-wrong-drop .slot__plus::after{content:''}
+body.is-locked .slot.is-wrong-drop{opacity:1}
+/* El nodo aloja la etiqueta "su lugar era aquí". */
+.node{position:relative}
+/* Años que son periodos ("1965-67") necesitan cuerpo menor. */
+.card__year--long{font-size:clamp(12px,1.9vw,17px)}
+/* Recorte elegante de la descripción en cartas pequeñas. */
+.card__desc{flex:1 1 auto;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical}
+@media (max-height:520px){.card__desc{-webkit-line-clamp:4}}
+/* Durante el arrastre el desplazamiento del raíl debe ser inmediato. */
+.board__rail.is-dragging{scroll-behavior:auto}
+#drag-ghost .card{width:100%}
+/* Mazo apilado: tres capas reales para que se vea el grosor. */
+.hand__deck{background:none;border:0;box-shadow:none}
+.hand__deck::before,.hand__deck::after{z-index:0}
+.hand__deck-inner{
+  position:absolute;inset:0;z-index:1;display:grid;place-items:center;border-radius:8px;
+  background:linear-gradient(150deg,#2b3320,#141a10);
+  border:1px solid rgba(233,169,60,.28);box-shadow:0 8px 18px rgba(0,0,0,.5);
+}
+.hand__deck-inner::before{
+  content:'';position:absolute;inset:5px;border:1px dashed rgba(233,169,60,.22);border-radius:5px;
+}
+
+/* ---------- 11. Utilidades ---------- */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+#sprite{display:none}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+/* Aviso de rotación en móvil vertical (no bloquea la partida) */
+#rotate-hint{
+  position:fixed;inset:0;z-index:80;display:none;flex-direction:column;
+  align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px;
+  background:rgba(6,8,5,.96);
+}
+#rotate-hint.is-visible{display:flex}
+#rotate-hint svg{width:64px;height:64px;color:var(--amber);animation:rotateNudge 2.2s ease-in-out infinite}
+@keyframes rotateNudge{0%,60%,100%{transform:rotate(0)}30%{transform:rotate(-90deg)}}
+#rotate-hint p{max-width:32ch;font-size:13px;line-height:1.6;color:#c2b493;margin:0}
+#rotate-hint h2{color:var(--amber);text-transform:uppercase;letter-spacing:.16em;font-size:16px}
+
+/* Pantallas bajas (móvil apaisado): compactar todo */
+@media (max-height:460px){
+  :root{--card-w:clamp(116px,16vw,148px);--card-h:clamp(126px,46vh,162px)}
+  .hand{padding-top:4px}
+  .hand__deck{height:calc(var(--card-h) * .56)}
+  .verdict{max-height:64dvh;padding:8px 12px}
+  .dossier::after{display:none}
+}
+@media (max-width:700px){
+  .intro{grid-template-columns:1fr;text-align:center}
+  .intro__brand{text-align:center}
+  .intro__rule{margin-left:auto;margin-right:auto}
+  .intro__lead{margin:0 auto}
+  .intro__tags{justify-content:center}
+  .dossier{transform:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ====== Iconografía (SVG en línea, sin imágenes externas) ====== -->
+<svg id="sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="ic-hill" viewBox="0 0 24 24"><path d="M1 20 L8 7 L12.5 13 L16.5 5 L23 20 Z" fill="currentColor" opacity=".85"/><path d="M1 20h22" stroke="currentColor" stroke-width="1.4"/></symbol>
+  <symbol id="ic-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="4.5" y="2.5" width="15" height="19" rx="1.5"/><path d="M7.5 7h9M7.5 11h9M7.5 15h6"/></symbol>
+  <symbol id="ic-map" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M2 6l7-2.5 6 2.5 7-2.5v15L15 21l-6-2.5L2 21z"/><path d="M9 3.5v15M15 6v15" stroke-dasharray="2 2"/></symbol>
+  <symbol id="ic-star" viewBox="0 0 24 24"><path d="M12 2.6l2.8 6 6.6.8-4.9 4.5 1.3 6.5L12 17.2 6.2 20.4l1.3-6.5L2.6 9.4l6.6-.8z" fill="currentColor"/></symbol>
+  <symbol id="ic-tank" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2" y="16" width="20" height="4.5" rx="2.2"/><path d="M5 11h11v5H5z"/><path d="M10 8h4.5v3H10z"/><path d="M14.5 9.2H22"/></symbol>
+  <symbol id="ic-ship" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2 15h20l-2.5 5H4.5z"/><path d="M7 15v-4h9l2 4"/><path d="M11 11V6h4"/><path d="M2 20c2 1.4 4 1.4 6 0s4-1.4 6 0 4 1.4 6 0"/></symbol>
+  <symbol id="ic-helo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2 6.5h18"/><path d="M10.5 6.5v2"/><path d="M4.5 9h9l3.5 2.5h4v3H4.5z" /><path d="M17 12.8h5"/><path d="M4 18h11M7 14.5V18M13 14.5V18"/></symbol>
+  <symbol id="ic-bomb" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><circle cx="11" cy="15" r="6"/><path d="M15.5 10.5L19 7"/><path d="M18 3.5l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5L14.5 7l2.5-1z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="ic-fire" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 2.5s5 4.5 5 8.5a5 5 0 0 1-10 0c0-2 1-3.4 2.2-4.6.2 2.4 2.3 2.6 2.3.6 0-1.8-.3-3.2.5-4.5z"/><path d="M12 21.5c-3.6 0-6.5-2.2-6.5-5"/><path d="M12 21.5c3.6 0 6.5-2.2 6.5-5"/></symbol>
+  <symbol id="ic-helmet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M4 15a8 8 0 0 1 16 0"/><path d="M1.5 15h21v2.2c0 .8-.7 1.5-1.5 1.5H3c-.8 0-1.5-.7-1.5-1.5z"/><path d="M12 7v8"/></symbol>
+  <symbol id="ic-peace" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="9.2"/><path d="M12 2.8v18.4M12 12L5.4 18.6M12 12l6.6 6.6"/></symbol>
+  <symbol id="ic-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M6 2.5v19"/><path d="M6 4h13l-3 4 3 4H6z" fill="currentColor" fill-opacity=".35"/></symbol>
+  <symbol id="ic-sound" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z"/><path d="M15.5 9a4.5 4.5 0 0 1 0 6"/><path d="M18 6.5a8 8 0 0 1 0 11"/></symbol>
+  <symbol id="ic-mute" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></symbol>
+  <symbol id="ic-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M9 3.5H3.5V9M15 3.5h5.5V9M9 20.5H3.5V15M15 20.5h5.5V15"/></symbol>
+  <symbol id="ic-restart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5a8 8 0 1 1-2.6-5.9"/><path d="M20.5 3.5V10H14"/></symbol>
+  <symbol id="ic-deck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="7" y="4" width="12" height="16" rx="2"/><path d="M4.5 7v12a2 2 0 0 0 2 2h9"/></symbol>
+  <symbol id="ic-rotate" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></symbol>
+</svg>
+
+<!-- ====== Escenografía de fondo ====== -->
+<div class="scene" aria-hidden="true">
+  <div class="scene__felt"></div>
+  <div class="scene__sun"></div>
+  <svg class="scene__heli" viewBox="0 0 24 24"><use href="#ic-helo" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+  <svg class="scene__heli scene__heli--2" viewBox="0 0 24 24"><use href="#ic-helo" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+  <svg class="scene__hills" viewBox="0 0 1200 400" preserveAspectRatio="none">
+    <path d="M0 250 L120 170 L210 215 L330 120 L430 195 L520 150 L640 225 L760 155 L880 205 L990 145 L1090 200 L1200 160 L1200 400 L0 400 Z" fill="#14200f" opacity=".75"/>
+    <path d="M0 300 L100 245 L200 285 L310 215 L420 275 L540 230 L660 290 L790 235 L910 285 L1040 240 L1140 285 L1200 255 L1200 400 L0 400 Z" fill="#0c140a" opacity=".9"/>
+    <path d="M0 350 L160 320 L300 345 L470 310 L620 350 L800 315 L960 348 L1120 320 L1200 340 L1200 400 L0 400 Z" fill="#060a05"/>
+  </svg>
+  <div class="scene__haze"></div>
+  <div class="scene__grain"></div>
+</div>
+
+<main id="app">
+
+  <!-- ====== Pantalla 1: portada ====== -->
+  <section id="screen-intro" class="screen is-active" aria-label="Portada">
+    <div class="intro">
+      <div class="intro__brand">
+        <p class="intro__kicker">Juego de mesa histórico · 12 cartas</p>
+        <h1 class="intro__title">Línea de tiempo<em>Guerra de Vietnam</em></h1>
+        <div class="intro__rule"></div>
+        <p class="intro__lead">
+          Doce hechos decisivos, de la caída de Dien Bien Phu a la toma de Saigón.
+          Cada carta llega <b>sin fecha</b>: tu trabajo es leerla, deducir cuándo ocurrió
+          y colocarla en el hueco correcto de la cronología. Al soltarla, el archivo se abre.
+        </p>
+        <div class="intro__tags">
+          <span class="tag">Sin vidas</span>
+          <span class="tag">1954 — 1975</span>
+          <span class="tag">Arrastra o toca</span>
+          <span class="tag">Modo apaisado</span>
+        </div>
+      </div>
+
+      <div class="dossier">
+        <h2>Instrucciones de campo</h2>
+        <ol>
+          <li>La <b>primera carta</b> se coloca sola: es el ancla de la línea de tiempo.</li>
+          <li>Toma la carta de tu mano y <b>arrástrala</b> al hueco donde creas que va. En el móvil también puedes <b>tocar el hueco</b> directamente.</li>
+          <li>Al colocarla se <b>revela la fecha</b>. Si acertaste, suma puntos y encadena racha.</li>
+          <li>Si fallas, la carta <b>se acomoda igualmente</b> en su sitio correcto y te explica por qué: la línea siempre queda bien ordenada.</li>
+          <li>No hay vidas ni derrota. La partida termina cuando colocas las <b>12 cartas</b>.</li>
+        </ol>
+        <p class="dossier__note">
+          <b>Nota histórica:</b> tres cartas son periodos o convenciones. El inicio de la guerra (1955)
+          es la fecha oficial estadounidense —hay historiadores que la sitúan en 1959 o 1964—, la guerra de
+          desgaste abarca 1965-1967 y la vietnamización se anuncia en noviembre de 1969. El juego las ordena
+          por esas fechas ancla y lo explica al colocarlas.
+        </p>
+      </div>
+
+      <div class="intro__actions">
+        <button id="btn-start" class="btn btn--primary">Repartir cartas</button>
+        <button id="btn-fullscreen" class="btn btn--ghost btn--sm" title="Pantalla completa">Pantalla completa</button>
+        <button id="btn-sound-intro" class="btn btn--ghost btn--sm">Sonido: activado</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== Pantalla 2: partida ====== -->
+  <section id="screen-game" class="screen" aria-label="Partida">
+    <header class="hud">
+      <span class="hud__title">Línea de tiempo · Vietnam</span>
+      <div class="hud__stats">
+        <div class="stat stat--score"><span class="stat__label">Puntos</span><span class="stat__value" id="hud-score">0</span></div>
+        <div class="stat stat--hit"><span class="stat__label">Aciertos</span><span class="stat__value" id="hud-hits">0</span></div>
+        <div class="stat stat--miss"><span class="stat__label">Errores</span><span class="stat__value" id="hud-misses">0</span></div>
+        <div class="stat stat--streak"><span class="stat__label">Racha</span><span class="stat__value" id="hud-streak">0</span></div>
+        <div class="stat"><span class="stat__label">Carta</span><span class="stat__value" id="hud-progress">1/11</span></div>
+      </div>
+      <div class="hud__tools">
+        <button class="icon-btn" id="btn-sound" title="Sonido" aria-label="Activar o desactivar sonido"><svg><use href="#ic-sound"/></svg></button>
+        <button class="icon-btn" id="btn-fs-game" title="Pantalla completa" aria-label="Pantalla completa"><svg><use href="#ic-expand"/></svg></button>
+        <button class="icon-btn" id="btn-abort" title="Reiniciar partida" aria-label="Reiniciar partida"><svg><use href="#ic-restart"/></svg></button>
+      </div>
+    </header>
+    <div class="progress"><div class="progress__bar" id="progress-bar"></div></div>
+
+    <div class="board">
+      <div class="board__rail" id="rail">
+        <div class="track" id="track" role="list" aria-label="Línea de tiempo"></div>
+      </div>
+    </div>
+
+    <div class="hand">
+      <div class="hand__deck" aria-hidden="true">
+        <div class="hand__deck-inner">
+          <svg><use href="#ic-deck"/></svg>
+          <span class="hand__deck-count" id="deck-count">11</span>
+          <span class="hand__deck-label">en mazo</span>
+        </div>
+      </div>
+      <div id="hand-slot"></div>
+      <p class="hand__hint">
+        <b>Arrastra</b> la carta hasta el hueco correcto de la línea, o <b>toca</b> el hueco.
+        La fecha se revela al colocarla.
+      </p>
+    </div>
+
+    <div class="verdict" id="verdict" role="status" aria-live="polite">
+      <div class="verdict__mark" id="verdict-mark">✓</div>
+      <div class="verdict__text">
+        <div class="verdict__head"><span id="verdict-title">Correcto</span> — <span class="verdict__date" id="verdict-date"></span></div>
+        <p class="verdict__fact" id="verdict-fact"></p>
+      </div>
+      <div class="verdict__points"><span>Puntos</span><div id="verdict-points">+100</div></div>
+      <button class="btn btn--primary btn--sm" id="btn-next">Siguiente</button>
+    </div>
+  </section>
+
+  <!-- ====== Pantalla 3: resultados ====== -->
+  <section id="screen-end" class="screen" aria-label="Resultados">
+    <div class="results">
+      <p class="results__rank" id="end-rank">Informe final</p>
+      <h2 class="results__title" id="end-title">Fin de la campaña</h2>
+      <div class="results__grid">
+        <div class="result-card result-card--score"><span class="result-card__label">Puntaje</span><span class="result-card__value" id="end-score">0</span></div>
+        <div class="result-card result-card--hit"><span class="result-card__label">Aciertos</span><span class="result-card__value" id="end-hits">0</span></div>
+        <div class="result-card result-card--miss"><span class="result-card__label">Errores</span><span class="result-card__value" id="end-misses">0</span></div>
+        <div class="result-card"><span class="result-card__label">Precisión</span><span class="result-card__value" id="end-accuracy">0%</span></div>
+        <div class="result-card"><span class="result-card__label">Mejor racha</span><span class="result-card__value" id="end-streak">0</span></div>
+      </div>
+      <div class="results__review" id="end-review"></div>
+      <p class="results__caption">Cronología completa de la partida. Verde: colocada en su sitio a la primera. Rojo: la acomodó el juego.</p>
+      <div class="intro__actions">
+        <button class="btn btn--primary" id="btn-again">Jugar de nuevo</button>
+        <button class="btn btn--ghost" id="btn-home">Volver a la portada</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Aviso de rotación (móvil en vertical) -->
+<div id="rotate-hint">
+  <svg><use href="#ic-rotate"/></svg>
+  <h2>Gira el teléfono</h2>
+  <p>Este juego de mesa está pensado para pantalla apaisada: verás la línea de tiempo completa y las cartas más grandes.</p>
+  <button class="btn btn--ghost btn--sm" id="btn-ignore-rotate">Seguir igualmente</button>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ==========================================================
+     1. DATOS — el mazo histórico
+     ----------------------------------------------------------
+     Cada carta es un objeto inmutable con:
+       id     · clave estable
+       title  · titular corto (lo que ve el jugador antes de colocar)
+       desc   · descripción breve del hecho, sin revelar la fecha
+       date   · fecha completa en texto, se revela al colocar
+       year   · etiqueta grande de la carta ya colocada
+       short  · fecha compacta para el pie de la carta
+       sort   · clave numérica AAAAMMDD que define el orden real
+       icon   · símbolo del sprite SVG
+       fact   · dato de contexto que se muestra en el veredicto
+     ========================================================== */
+  var CARDS = [
+    {
+      id: 'dienbienphu',
+      title: 'Derrota francesa en Dien Bien Phu',
+      desc: 'El ejército francés capitula tras 56 días de asedio: se derrumba el dominio colonial en Indochina.',
+      date: '7 de mayo de 1954', year: '1954', short: '07·05·1954', sort: 19540507, icon: 'ic-hill',
+      fact: 'El Viet Minh subió su artillería pieza a pieza por la selva hasta dominar las alturas. Francia perdió la batalla y, con ella, la guerra.'
+    },
+    {
+      id: 'ginebra',
+      title: 'Se firma el Acuerdo de Ginebra',
+      desc: 'Las potencias pactan el fin de la guerra de Indochina y parten Vietnam en dos por el paralelo 17.',
+      date: '21 de julio de 1954', year: '1954', short: '21·07·1954', sort: 19540721, icon: 'ic-doc',
+      fact: 'La división debía ser provisional, hasta unas elecciones de reunificación previstas para 1956 que nunca llegaron a celebrarse.'
+    },
+    {
+      id: 'inicio',
+      title: 'Comienza la Guerra de Vietnam',
+      desc: 'Vietnam del Sur se proclama república con respaldo de EE.UU. y arranca el choque entre norte y sur.',
+      date: '1 de noviembre de 1955', year: '1955', short: '01·11·1955', sort: 19551101, icon: 'ic-map',
+      fact: 'Es una fecha convencional: la usa oficialmente Estados Unidos. Otros historiadores sitúan el inicio en 1959, cuando Hanói autoriza la lucha armada, o en 1964.'
+    },
+    {
+      id: 'vietcong',
+      title: 'Se funda el Vietcong',
+      desc: 'Nace en el sur el Frente Nacional de Liberación, la guerrilla comunista sostenida desde el norte.',
+      date: '20 de diciembre de 1960', year: '1960', short: '20·12·1960', sort: 19601220, icon: 'ic-star',
+      fact: '«Vietcong» fue el apodo despectivo que le pusieron sus enemigos. Su nombre real era Frente Nacional de Liberación (FNL).'
+    },
+    {
+      id: 'diem',
+      title: 'Derrocan a Ngo Dinh Diem',
+      desc: 'Un golpe militar tumba al presidente survietnamita, asesinado al día siguiente.',
+      date: '1 y 2 de noviembre de 1963', year: '1963', short: '01·11·1963', sort: 19631101, icon: 'ic-tank',
+      fact: 'Washington conocía el golpe y no lo impidió. Tras Diem, el sur encadenó gobiernos militares inestables durante años.'
+    },
+    {
+      id: 'tonkin',
+      title: 'Incidente del Golfo de Tonkín',
+      desc: 'Un supuesto ataque a destructores de EE.UU. abre la puerta a la intervención masiva.',
+      date: '2 y 4 de agosto de 1964', year: '1964', short: '02·08·1964', sort: 19640802, icon: 'ic-ship',
+      fact: 'El segundo ataque, el del 4 de agosto, probablemente nunca ocurrió: documentos desclasificados lo desmintieron décadas después.'
+    },
+    {
+      id: 'danang',
+      title: 'Primeras tropas de EE.UU. en Da Nang',
+      desc: 'Desembarcan 3.500 marines: las primeras unidades de combate de EE.UU. en suelo vietnamita.',
+      date: '8 de marzo de 1965', year: '1965', short: '08·03·1965', sort: 19650308, icon: 'ic-helo',
+      fact: 'En apenas tres años el contingente pasó de 3.500 soldados a más de medio millón.'
+    },
+    {
+      id: 'desgaste',
+      title: 'Guerra de desgaste en la selva',
+      desc: 'Bombardeos masivos de EE.UU. frente a emboscadas, trampas y túneles del Vietcong.',
+      date: 'Periodo 1965 - 1967', year: '1965-67', short: '1965 · 1967', sort: 19660101, icon: 'ic-bomb',
+      fact: 'La operación Rolling Thunder (1965-1968) lanzó más bombas que toda la campaña aliada en Europa durante la Segunda Guerra Mundial. Los túneles de Cu Chi llegaron a sumar unos 250 km.'
+    },
+    {
+      id: 'tet',
+      title: 'Ofensiva del Tet',
+      desc: 'El norte ataca por sorpresa más de cien ciudades durante la tregua del Año Nuevo lunar.',
+      date: '30 y 31 de enero de 1968', year: '1968', short: '30·01·1968', sort: 19680130, icon: 'ic-fire',
+      fact: 'Militarmente fue una derrota para el norte, pero rompió la confianza de la opinión pública estadounidense: fue el punto de inflexión de la guerra.'
+    },
+    {
+      id: 'vietnamizacion',
+      title: 'Política de vietnamización',
+      desc: 'EE.UU. traspasa el peso del combate al ejército survietnamita y retira tropas terrestres.',
+      date: 'Anunciada el 3 de noviembre de 1969 (1969 - 1971)', year: '1969-71', short: '1969 · 1971', sort: 19691103, icon: 'ic-helmet',
+      fact: 'Nixon la anunció en un discurso televisado. Las tropas estadounidenses bajaron de unas 543.000 en 1969 a unas 150.000 en 1971.'
+    },
+    {
+      id: 'paris',
+      title: 'EE.UU. se retira tras los Acuerdos de París',
+      desc: 'Se firma el alto el fuego y las últimas tropas estadounidenses abandonan Vietnam.',
+      date: '27 de enero de 1973', year: '1973', short: '27·01·1973', sort: 19730127, icon: 'ic-peace',
+      fact: 'Los últimos soldados salieron el 29 de marzo de 1973, pero la guerra entre el norte y el sur continuó dos años más sin ellos.'
+    },
+    {
+      id: 'saigon',
+      title: 'Caída de Saigón',
+      desc: 'Los tanques norvietnamitas entran en la capital del sur: la guerra termina y Vietnam se unifica.',
+      date: '30 de abril de 1975', year: '1975', short: '30·04·1975', sort: 19750430, icon: 'ic-flag',
+      fact: 'La evacuación en helicóptero desde los tejados de Saigón (operación Frequent Wind) se convirtió en la imagen final de la guerra.'
+    }
+  ];
+
+  /* ==========================================================
+     2. UTILIDADES
+     ========================================================== */
+  var $ = function (sel, root) { return (root || document).querySelector(sel); };
+  var wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+
+  /** Baraja una copia del array (Fisher-Yates). No muta la entrada. */
+  function shuffle(list) {
+    var a = list.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  /* ==========================================================
+     3. SONIDO — sintetizado con WebAudio, sin archivos externos
+     ========================================================== */
+  var Sound = (function () {
+    var ctx = null;
+    var enabled = true;
+    try { enabled = localStorage.getItem('tl-vn-sound') !== 'off'; } catch (e) { }
+
+    function ensure() {
+      if (!ctx) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        ctx = new AC();
+      }
+      if (ctx.state === 'suspended') ctx.resume();
+      return ctx;
+    }
+    function tone(freq, dur, type, gain, delay) {
+      var c = ensure(); if (!c || !enabled) return;
+      var t0 = c.currentTime + (delay || 0);
+      var osc = c.createOscillator(), g = c.createGain();
+      osc.type = type || 'sine';
+      osc.frequency.setValueAtTime(freq, t0);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(gain || 0.07, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(g); g.connect(c.destination);
+      osc.start(t0); osc.stop(t0 + dur + 0.05);
+    }
+    return {
+      isOn: function () { return enabled; },
+      toggle: function () {
+        enabled = !enabled;
+        try { localStorage.setItem('tl-vn-sound', enabled ? 'on' : 'off'); } catch (e) { }
+        if (enabled) tone(660, 0.12, 'triangle', 0.06);
+        return enabled;
+      },
+      play: function (name) {
+        if (!enabled) return;
+        if (name === 'pick') tone(320, 0.09, 'square', 0.03);
+        if (name === 'drop') tone(180, 0.14, 'triangle', 0.05);
+        if (name === 'hit') { tone(523, 0.14, 'triangle', 0.07); tone(784, 0.22, 'triangle', 0.06, 0.1); }
+        if (name === 'miss') { tone(196, 0.2, 'sawtooth', 0.05); tone(140, 0.32, 'sawtooth', 0.05, 0.12); }
+        if (name === 'end') { [523, 659, 784, 1046].forEach(function (f, i) { tone(f, 0.3, 'triangle', 0.06, i * 0.13); }); }
+      }
+    };
+  })();
+
+  /* ==========================================================
+     4. ESTADO DE LA PARTIDA
+     ----------------------------------------------------------
+     `board` guarda entradas { card, result } donde result es
+     'anchor' | 'hit' | 'miss'. Siempre queda ordenado por
+     `card.sort`, de modo que la línea de tiempo es correcta
+     incluso después de un fallo.
+     ========================================================== */
+  var state = {
+    deck: [], board: [], current: null,
+    score: 0, hits: 0, misses: 0, streak: 0, bestStreak: 0,
+    played: 0, total: 0, locked: false
+  };
+
+  var PUNTOS_BASE = 100;
+  var BONO_RACHA = 25;
+  var BONO_MAX = 100;
+
+  /* Referencias del DOM */
+  var track = $('#track');
+  var rail = $('#rail');
+  var handSlot = $('#hand-slot');
+  var verdict = $('#verdict');
+
+  /* ==========================================================
+     5. RENDERIZADO
+     ========================================================== */
+
+  /** Devuelve el HTML de una carta ya colocada (fecha visible). */
+  function boardCardHtml(entry) {
+    var c = entry.card;
+    var mod = entry.result === 'hit' ? ' card--hit' : (entry.result === 'miss' ? ' card--miss' : ' card--anchor');
+    var yearCls = c.year.length > 4 ? ' card__year--long' : '';
+    var mark = entry.result === 'hit' ? '✓' : (entry.result === 'miss' ? '✕' : '★');
+    var markLabel = entry.result === 'hit' ? 'Acierto' : (entry.result === 'miss' ? 'Recolocada por el juego' : 'Carta ancla');
+    return '' +
+      '<article class="card card--board' + mod + '">' +
+        '<div class="card__band">' +
+          '<svg><use href="#' + c.icon + '"/></svg>' +
+          '<span class="card__year' + yearCls + '">' + escapeHtml(c.year) + '</span>' +
+        '</div>' +
+        '<div class="card__body">' +
+          '<h3 class="card__title">' + escapeHtml(c.title) + '</h3>' +
+          '<p class="card__desc">' + escapeHtml(c.desc) + '</p>' +
+        '</div>' +
+        '<div class="card__foot"><span>' + escapeHtml(c.short) + '</span>' +
+          '<span class="card__mark" title="' + markLabel + '">' + mark + '</span></div>' +
+      '</article>';
+  }
+
+  /** Devuelve el HTML de la carta de la mano (sin fecha). */
+  function handCardHtml(c) {
+    return '' +
+      '<article class="card card--hand" id="hand-card" tabindex="0" role="button" ' +
+        'aria-label="Carta por colocar: ' + escapeHtml(c.title) + '. Arrástrala o elige un hueco de la línea de tiempo.">' +
+        '<div class="card__band">' +
+          '<svg><use href="#' + c.icon + '"/></svg>' +
+          '<span class="card__unknown">? ? ? ?</span>' +
+        '</div>' +
+        '<div class="card__body">' +
+          '<h3 class="card__title">' + escapeHtml(c.title) + '</h3>' +
+          '<p class="card__desc">' + escapeHtml(c.desc) + '</p>' +
+        '</div>' +
+        '<span class="card__stamp">Sin fechar</span>' +
+        '<div class="card__foot"><span>Archivo pendiente</span><span>?</span></div>' +
+      '</article>';
+  }
+
+  /** Pinta la línea de tiempo completa: extremos, huecos y nodos. */
+  function renderTrack(opts) {
+    opts = opts || {};
+    var newIndex = typeof opts.newIndex === 'number' ? opts.newIndex : -1;
+    var html = '<div class="track__end">◀ Más antiguo</div>';
+
+    for (var i = 0; i <= state.board.length; i++) {
+      html += slotHtml(i);
+      if (i < state.board.length) {
+        var entry = state.board[i];
+        var cls = 'node';
+        if (i === newIndex) cls += ' is-new';
+        if (i === newIndex && entry.result === 'miss') cls += ' is-wrong is-shake';
+        html += '<div class="' + cls + '" role="listitem" data-pos="' + i + '">' +
+          boardCardHtml(entry) +
+          (i === newIndex && entry.result === 'miss' ? '<span class="ghost-mark">Su sitio</span>' : '') +
+          '<div class="node__stem"></div><div class="node__dot"></div>' +
+        '</div>';
+      }
+    }
+    html += '<div class="track__end">Más reciente ▶</div>';
+    track.innerHTML = html;
+  }
+
+  /** Hueco de inserción: botón accesible con etiqueta descriptiva. */
+  function slotHtml(i) {
+    var label;
+    if (state.board.length === 0) label = 'Colocar la carta en la línea de tiempo';
+    else if (i === 0) label = 'Colocar antes de ' + state.board[0].card.title;
+    else if (i === state.board.length) label = 'Colocar después de ' + state.board[i - 1].card.title;
+    else label = 'Colocar entre ' + state.board[i - 1].card.title + ' y ' + state.board[i].card.title;
+    return '<button type="button" class="slot" data-index="' + i + '" aria-label="' + escapeHtml(label) + '">' +
+      '<span class="slot__plus">+</span></button>';
+  }
+
+  /** Pinta la carta en mano y engancha el arrastre. */
+  function renderHand() {
+    if (!state.current) { handSlot.innerHTML = ''; return; }
+    handSlot.innerHTML = handCardHtml(state.current);
+    var el = $('#hand-card');
+    el.addEventListener('pointerdown', onDragStart);
+    el.addEventListener('keydown', function (ev) {
+      // Accesibilidad: con el teclado, Enter lleva el foco al primer hueco.
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        var first = track.querySelector('.slot');
+        if (first) first.focus();
+      }
+    });
+  }
+
+  /** Refresca marcadores del HUD, con pequeño rebote al cambiar. */
+  function bump(el) {
+    el.classList.remove('is-bump');
+    void el.offsetWidth;
+    el.classList.add('is-bump');
+  }
+  function updateHud(changed) {
+    var map = {
+      '#hud-score': state.score,
+      '#hud-hits': state.hits,
+      '#hud-misses': state.misses,
+      '#hud-streak': state.streak,
+      '#hud-progress': Math.min(state.played + 1, state.total) + '/' + state.total
+    };
+    Object.keys(map).forEach(function (sel) {
+      var el = $(sel); if (!el) return;
+      if (el.textContent !== String(map[sel])) { el.textContent = map[sel]; }
+    });
+    if (changed) { changed.forEach(function (sel) { var el = $(sel); if (el) bump(el); }); }
+    $('#deck-count').textContent = state.deck.length;
+    $('#progress-bar').style.width = (state.total ? (state.played / state.total) * 100 : 0) + '%';
+  }
+
+  /* ==========================================================
+     6. FLUJO DE JUEGO
+     ========================================================== */
+
+  function startGame() {
+    state.deck = shuffle(CARDS);
+    state.board = [];
+    state.score = 0; state.hits = 0; state.misses = 0;
+    state.streak = 0; state.bestStreak = 0; state.played = 0;
+    state.locked = false;
+    document.body.classList.remove('is-locked');
+
+    // La primera carta se coloca sola: es el ancla de la cronología.
+    var anchor = state.deck.pop();
+    state.board.push({ card: anchor, result: 'anchor' });
+    state.total = state.deck.length;
+
+    closeVerdict();
+    drawNext();
+    showScreen('screen-game');
+  }
+
+  function drawNext() {
+    if (state.deck.length === 0) { endGame(); return; }
+    state.current = state.deck.pop();
+    renderTrack();
+    renderHand();
+    updateHud();
+  }
+
+  /** Índice donde la carta debería entrar para que el orden sea correcto. */
+  function correctIndex(card) {
+    var i = 0;
+    while (i < state.board.length && state.board[i].card.sort < card.sort) i++;
+    return i;
+  }
+
+  /** Coloca la carta actual en el hueco elegido y resuelve la jugada. */
+  function placeCard(slotIndex) {
+    if (state.locked || !state.current) return;
+    var card = state.current;
+    state.current = null;
+    state.locked = true;
+    document.body.classList.add('is-locked');
+    handSlot.innerHTML = '';
+    Sound.play('drop');
+
+    var target = correctIndex(card);
+    var ok = slotIndex === target;
+    var points = 0;
+
+    if (ok) {
+      state.hits++;
+      state.streak++;
+      if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+      points = PUNTOS_BASE + Math.min((state.streak - 1) * BONO_RACHA, BONO_MAX);
+      state.score += points;
+    } else {
+      state.misses++;
+      state.streak = 0;
+    }
+    state.played++;
+
+    var finish = function () {
+      state.board.splice(target, 0, { card: card, result: ok ? 'hit' : 'miss' });
+      renderTrack({ newIndex: target });
+      var node = track.querySelector('.node[data-pos="' + target + '"]');
+      if (node && node.scrollIntoView) node.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      updateHud(ok ? ['#hud-score', '#hud-hits'] : ['#hud-misses']);
+      Sound.play(ok ? 'hit' : 'miss');
+      openVerdict(card, ok, points, target);
+    };
+
+    if (ok) {
+      finish();
+    } else {
+      // Marca en rojo el hueco equivocado antes de recolocar la carta.
+      var wrongSlot = track.querySelector('.slot[data-index="' + slotIndex + '"]');
+      if (wrongSlot) {
+        wrongSlot.classList.add('is-wrong-drop');
+        wrongSlot.insertAdjacentHTML('beforeend', '<span class="ghost-mark">Aquí no</span>');
+      }
+      wait(950).then(finish);
+    }
+  }
+
+  /** Panel inferior con la fecha revelada y el contexto histórico. */
+  function openVerdict(card, ok, points, target) {
+    verdict.classList.remove('verdict--ok', 'verdict--bad');
+    verdict.classList.add(ok ? 'verdict--ok' : 'verdict--bad');
+    $('#verdict-mark').textContent = ok ? '✓' : '✕';
+    $('#verdict-title').textContent = ok ? 'Bien colocada' : 'Fuera de sitio';
+    $('#verdict-date').textContent = card.date;
+    $('#verdict-points').textContent = ok ? '+' + points : '0';
+
+    var donde = '';
+    if (!ok) {
+      if (target === 0) donde = 'Iba la primera de la línea. ';
+      else if (target === state.board.length - 1) donde = 'Iba la última de la línea. ';
+      else donde = 'Iba entre «' + state.board[target - 1].card.title + '» y «' + state.board[target + 1].card.title + '». ';
+    }
+    $('#verdict-fact').textContent = donde + card.fact;
+    $('#btn-next').textContent = state.deck.length === 0 ? 'Ver resultados' : 'Siguiente carta';
+    verdict.classList.add('is-open');
+    $('#btn-next').focus({ preventScroll: true });
+  }
+
+  function closeVerdict() { verdict.classList.remove('is-open'); }
+
+  function nextTurn() {
+    closeVerdict();
+    state.locked = false;
+    document.body.classList.remove('is-locked');
+    if (state.deck.length === 0) { endGame(); return; }
+    drawNext();
+  }
+
+  /* ==========================================================
+     7. PANTALLA DE RESULTADOS
+     ========================================================== */
+  var RANGOS = [
+    { min: 1.00, name: 'Historiador de campo', note: 'Cronología perfecta: ni una sola carta fuera de sitio.' },
+    { min: 0.80, name: 'Estratega', note: 'Dominas el hilo de la guerra: fallos mínimos y bien recuperados.' },
+    { min: 0.60, name: 'Sargento de archivo', note: 'Sólido en las fechas grandes; repasa los periodos intermedios.' },
+    { min: 0.35, name: 'Recluta', note: 'Tienes el mapa general. Fíjate en el orden de 1954, 1964 y 1969.' },
+    { min: 0.00, name: 'Novato en el frente', note: 'Repasa la línea de tiempo de abajo y vuelve a intentarlo: mejora rapidísimo.' }
+  ];
+
+  function endGame() {
+    var ratio = state.total ? state.hits / state.total : 0;
+    var rango = RANGOS.find(function (r) { return ratio >= r.min; }) || RANGOS[RANGOS.length - 1];
+
+    $('#end-title').textContent = rango.name;
+    $('#end-rank').textContent = 'Rango obtenido';
+    $('#end-score').textContent = state.score;
+    $('#end-hits').textContent = state.hits;
+    $('#end-misses').textContent = state.misses;
+    $('#end-accuracy').textContent = Math.round(ratio * 100) + '%';
+    $('#end-streak').textContent = state.bestStreak;
+    $('.results__caption').textContent = rango.note;
+
+    // Repaso cronológico completo: sirve como resumen de estudio.
+    $('#end-review').innerHTML = state.board.map(function (e) {
+      var cls = e.result === 'hit' ? ' review-chip--hit' : (e.result === 'miss' ? ' review-chip--miss' : '');
+      var mark = e.result === 'hit' ? '✓' : (e.result === 'miss' ? '✕' : '★');
+      return '<span class="review-chip' + cls + '">' +
+        '<span class="review-chip__mark">' + mark + '</span>' +
+        '<b>' + escapeHtml(e.card.year) + '</b> ' + escapeHtml(e.card.title) + '</span>';
+    }).join('');
+
+    Sound.play('end');
+    showScreen('screen-end');
+  }
+
+  /* ==========================================================
+     8. ARRASTRE — un único controlador con Pointer Events,
+        válido para ratón, lápiz y dedo. Se apoya en un clon
+        flotante y en elementFromPoint para detectar el hueco.
+     ========================================================== */
+  var ghostLayer = null;
+  var drag = null;
+
+  function onDragStart(ev) {
+    if (state.locked || !state.current) return;
+    if (ev.button !== undefined && ev.button > 0) return;
+    var cardEl = ev.currentTarget;
+    var rect = cardEl.getBoundingClientRect();
+
+    drag = {
+      id: ev.pointerId,
+      el: cardEl,
+      startX: ev.clientX, startY: ev.clientY,
+      offsetX: ev.clientX - rect.left, offsetY: ev.clientY - rect.top,
+      width: rect.width, moved: false, slot: null
+    };
+
+    ghostLayer = document.createElement('div');
+    ghostLayer.id = 'drag-ghost';
+    ghostLayer.style.width = rect.width + 'px';
+    ghostLayer.innerHTML = handCardHtml(state.current).replace(' id="hand-card"', '').replace(' tabindex="0"', '');
+    document.body.appendChild(ghostLayer);
+    moveGhost(ev.clientX, ev.clientY);
+
+    cardEl.classList.add('card--dragging');
+    rail.classList.add('is-dragging');
+    try { cardEl.setPointerCapture(ev.pointerId); } catch (e) { }
+    cardEl.addEventListener('pointermove', onDragMove);
+    cardEl.addEventListener('pointerup', onDragEnd);
+    cardEl.addEventListener('pointercancel', onDragEnd);
+    Sound.play('pick');
+    ev.preventDefault();
+  }
+
+  function moveGhost(x, y) {
+    if (!ghostLayer || !drag) return;
+    ghostLayer.style.transform = 'translate(' + (x - drag.offsetX) + 'px,' + (y - drag.offsetY) + 'px)';
+  }
+
+  function onDragMove(ev) {
+    if (!drag || ev.pointerId !== drag.id) return;
+    ev.preventDefault();
+    moveGhost(ev.clientX, ev.clientY);
+    if (Math.abs(ev.clientX - drag.startX) > 6 || Math.abs(ev.clientY - drag.startY) > 6) drag.moved = true;
+
+    // Desplaza el raíl cuando el dedo se acerca a los bordes.
+    var r = rail.getBoundingClientRect();
+    if (ev.clientX < r.left + 60) rail.scrollLeft -= 16;
+    else if (ev.clientX > r.right - 60) rail.scrollLeft += 16;
+
+    var under = document.elementFromPoint(ev.clientX, ev.clientY);
+    var slot = under && under.closest ? under.closest('.slot') : null;
+    if (slot !== drag.slot) {
+      if (drag.slot) drag.slot.classList.remove('is-over');
+      if (slot) slot.classList.add('is-over');
+      drag.slot = slot;
+    }
+  }
+
+  function onDragEnd(ev) {
+    if (!drag || ev.pointerId !== drag.id) return;
+    var cardEl = drag.el, slot = drag.slot;
+    cardEl.removeEventListener('pointermove', onDragMove);
+    cardEl.removeEventListener('pointerup', onDragEnd);
+    cardEl.removeEventListener('pointercancel', onDragEnd);
+    cardEl.classList.remove('card--dragging');
+    rail.classList.remove('is-dragging');
+    if (slot) slot.classList.remove('is-over');
+    if (ghostLayer) { ghostLayer.remove(); ghostLayer = null; }
+    drag = null;
+    if (slot && ev.type === 'pointerup') placeCard(parseInt(slot.dataset.index, 10));
+  }
+
+  // Los huecos también funcionan con un simple toque o clic (móvil y teclado).
+  track.addEventListener('click', function (ev) {
+    var slot = ev.target.closest('.slot');
+    if (slot) placeCard(parseInt(slot.dataset.index, 10));
+  });
+
+  /* ==========================================================
+     9. NAVEGACIÓN, PANTALLA COMPLETA Y ORIENTACIÓN
+     ========================================================== */
+  function showScreen(id) {
+    ['screen-intro', 'screen-game', 'screen-end'].forEach(function (s) {
+      $('#' + s).classList.toggle('is-active', s === id);
+    });
+  }
+
+  function toggleFullscreen() {
+    var el = document.documentElement;
+    if (!document.fullscreenElement) {
+      (el.requestFullscreen || el.webkitRequestFullscreen || function () { }).call(el).catch(function () { });
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape').catch(function () { });
+      }
+    } else {
+      (document.exitFullscreen || document.webkitExitFullscreen || function () { }).call(document);
+    }
+  }
+
+  function refreshSoundUi() {
+    var on = Sound.isOn();
+    $('#btn-sound').innerHTML = '<svg><use href="#' + (on ? 'ic-sound' : 'ic-mute') + '"/></svg>';
+    $('#btn-sound').classList.toggle('is-off', !on);
+    $('#btn-sound-intro').textContent = 'Sonido: ' + (on ? 'activado' : 'apagado');
+  }
+
+  var rotateDismissed = false;
+  function checkOrientation() {
+    var portrait = window.matchMedia('(orientation: portrait)').matches;
+    var small = Math.min(window.innerWidth, window.innerHeight) < 560;
+    var show = portrait && small && !rotateDismissed && $('#screen-game').classList.contains('is-active');
+    $('#rotate-hint').classList.toggle('is-visible', show);
+  }
+
+  /* ---------- Cableado de la interfaz ---------- */
+  $('#btn-start').addEventListener('click', startGame);
+  $('#btn-again').addEventListener('click', startGame);
+  $('#btn-home').addEventListener('click', function () { showScreen('screen-intro'); });
+  $('#btn-next').addEventListener('click', nextTurn);
+  $('#btn-abort').addEventListener('click', function () {
+    if (confirm('¿Reiniciar la partida desde el principio?')) startGame();
+  });
+  $('#btn-fullscreen').addEventListener('click', toggleFullscreen);
+  $('#btn-fs-game').addEventListener('click', toggleFullscreen);
+  $('#btn-sound').addEventListener('click', function () { Sound.toggle(); refreshSoundUi(); });
+  $('#btn-sound-intro').addEventListener('click', function () { Sound.toggle(); refreshSoundUi(); });
+  $('#btn-ignore-rotate').addEventListener('click', function () {
+    rotateDismissed = true; checkOrientation();
+  });
+
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter' && verdict.classList.contains('is-open')) { ev.preventDefault(); nextTurn(); }
+  });
+  window.addEventListener('resize', checkOrientation);
+  window.addEventListener('orientationchange', function () { setTimeout(checkOrientation, 250); });
+  // Evita el zoom por doble toque durante el arrastre en iOS.
+  document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+
+  refreshSoundUi();
+  checkOrientation();
+  setInterval(checkOrientation, 1500);
+})();
+</script>
+</body>
+</html>

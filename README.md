@@ -215,6 +215,46 @@ Y la función de la que depende todo el aspecto: **`PixelBuffer.outline()`**, qu
 
 ---
 
+## Segundo juego: **Línea de Tiempo — Guerra de Vietnam**
+
+Archivo único y autónomo: `public/timeline.html`. No usa Vite, ni dependencias, ni un solo
+archivo de imagen —toda la ambientación (selva, atardecer, helicópteros, iconos de las
+cartas) es CSS y SVG en línea—, así que funciona de tres maneras:
+
+- **abriéndolo directo** con doble clic, sin servidor (útil para llevarlo en un pendrive),
+- en local con `npm run dev` → `http://localhost:5173/timeline.html`,
+- y desplegado: como está en `public/`, Vite lo copia tal cual a `dist/` y queda en
+  `https://tu-sitio.netlify.app/timeline.html`.
+
+### La fórmula
+
+Es la mecánica del juego de mesa *Timeline*: la carta llega **sin fecha**, el jugador la lee,
+deduce cuándo ocurrió y la inserta en el hueco correcto de la cronología. Al soltarla se
+revela la fecha.
+
+- **12 cartas**, de Dien Bien Phu (1954) a la caída de Saigón (1975). La primera se reparte
+  como ancla, se juegan 11.
+- **Sin vidas y sin derrota.** Se juegan todas las cartas siempre.
+- El fallo **no descarta la carta**: el juego la acomoda en su sitio correcto y explica dónde
+  iba. La línea de tiempo queda bien ordenada pase lo que pase, y sirve de material de repaso.
+- Puntuación: 100 puntos por acierto más bono por racha (hasta 200). Al final, informe con
+  puntaje, aciertos, errores, precisión, mejor racha, rango y la cronología completa.
+- **Arrastrar o tocar**: un único controlador de `Pointer Events` sirve a ratón, lápiz y dedo,
+  y además cada hueco es un `<button>` real, así que también se juega con teclado.
+- Pensado para **pantalla apaisada** (proyector o móvil girado), con botón de pantalla completa
+  y aviso de rotación en vertical.
+
+### Precisión histórica
+
+Tres cartas no son fechas puntuales y el juego lo dice al colocarlas: el **inicio de la guerra
+(1 nov 1955)** es la fecha oficial estadounidense —hay historiadores que la sitúan en 1959 o
+1964—, la **guerra de desgaste** es el periodo 1965-1967 (se ordena por 1966) y la
+**vietnamización** se anunció el 3 de noviembre de 1969. También se aclara que «Vietcong» era
+el apodo despectivo del Frente Nacional de Liberación y que el segundo ataque del Golfo de
+Tonkín probablemente nunca ocurrió.
+
+---
+
 ## Verificación
 
 ```bash
