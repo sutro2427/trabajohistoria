@@ -246,29 +246,31 @@ revela la fecha.
 
 ### Publicarlo como enlace propio
 
-`scripts/build-timeline-site.mjs` genera `dist-timeline/`: una carpeta estática con el juego
-como portada (`index.html`), el manifiesto para instalarlo en el móvil, los iconos y la imagen
-de vista previa que sale al pegar el enlace en WhatsApp.
+La carpeta **`sitio-vietnam/`** *es* el sitio: HTML estático, sin build, sin dependencias.
+Dentro están el juego (`index.html`), el manifiesto para instalarlo en el móvil, los iconos,
+la imagen de vista previa que sale al pegar el enlace en WhatsApp y su propio `netlify.toml`.
 
-```bash
-node scripts/build-timeline-site.mjs                      # → dist-timeline/
-node scripts/build-timeline-site.mjs https://otro.netlify.app   # otro dominio
-```
+Para publicarlo en Netlify basta con enlazar el repositorio y rellenar **un solo campo**:
 
-Sitio de destino: **`linea-tiempo-vietnam`** → https://linea-tiempo-vietnam.netlify.app
+| Campo | Valor |
+|---|---|
+| Repository | `sutro2427/trabajohistoria` |
+| Branch | `claude/vietnam-timeline-game-q46qaf` |
+| **Base directory** | **`sitio-vietnam`** |
+| Build command | *(vacío)* |
+| Publish directory | *(vacío)* |
 
-Dos formas de publicarlo:
+→ https://linea-tiempo-vietnam.netlify.app
 
-1. **Enlazando el repositorio** (se actualiza solo en cada `push`).
-   En Netlify → proyecto `linea-tiempo-vietnam` → *Build & deploy* → *Link repository* →
-   `sutro2427/trabajohistoria`, con:
-   - rama: `claude/vietnam-timeline-game-q46qaf`
-   - build command: `node scripts/build-timeline-site.mjs`
-   - publish directory: `dist-timeline`
-2. **Arrastrando la carpeta** `dist-timeline/` (o su `.zip`) a la zona de *Deploys* del proyecto.
+El campo que importa es **Base directory**. Con él, Netlify lee `sitio-vietnam/netlify.toml`
+en vez del de la raíz —que es el de PIXEL WAR y ordena `npm run build` + publicar `dist/`— y
+publica la carpeta tal cual. Sin ese campo el sitio mostraría PIXEL WAR, porque en Netlify el
+`netlify.toml` del repositorio manda por encima de lo que se escriba en el panel.
 
-Además, en el sitio principal el juego queda servido en **`/vietnam`** además de
-`/timeline.html`, por la regla de reescritura de `netlify.toml`.
+Desde ahí, cada `push` a esa rama vuelve a publicar solo. Como alternativa, la misma carpeta
+se puede arrastrar a la pestaña *Deploys* del proyecto.
+
+El sitio principal conserva el atajo **`/vietnam`**, que redirige a este dominio.
 
 ### Precisión histórica
 

@@ -1,0 +1,32 @@
+# Configuración del sitio del juego "Línea de Tiempo · Guerra de Vietnam".
+#
+# En Netlify basta con enlazar el repositorio y poner
+#   Base directory: sitio-vietnam
+# Netlify lee ESTE archivo (no el de la raíz, que es el de PIXEL WAR) y
+# publica la carpeta tal cual: es HTML estático, no hay nada que compilar.
+
+[build]
+  publish = "."
+
+# El juego puede cambiar entre clases: el HTML nunca se cachea.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Miniatura del enlace e iconos: estables, se cachean un día.
+[[headers]]
+  for = "/timeline-assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+# Rutas alternativas por si se dicta el enlace en voz alta.
+[[redirects]]
+  from = "/juego"
+  to = "/"
+  status = 301
+
+[[redirects]]
+  from = "/jugar"
+  to = "/"
+  status = 301
