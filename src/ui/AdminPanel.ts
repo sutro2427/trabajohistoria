@@ -64,6 +64,8 @@ export class AdminPanel {
     private readonly handlers: AdminPanelHandlers,
     private readonly roomId: string,
     private readonly online: boolean,
+    /** Qué falta para tener sala compartida; `null` si la hay. */
+    private readonly offlineReason: string | null = null,
   ) {
     this.gate = requireElement('admin-gate');
     this.gateForm = requireElement('admin-form') as HTMLFormElement;
@@ -237,9 +239,12 @@ export class AdminPanel {
     this.paintClock();
 
     if (!this.online) {
-      // En modo local solo se ve al jugador de este equipo: conviene decirlo
-      // antes de que el profesor crea que la clase no está entrando.
-      this.link.textContent = 'Sin conexión con la sala: panel en modo local.';
+      // Sin sala compartida el panel solo se ve a sí mismo. Hay que decirlo
+      // antes de que el profesor concluya que la clase no está entrando —y
+      // decir QUÉ falta, porque el panel es el sitio donde se descubre.
+      this.link.textContent =
+        this.offlineReason ?? 'Sin conexión con la sala: panel en modo local.';
+      this.link.classList.add('is-warning');
     }
   }
 

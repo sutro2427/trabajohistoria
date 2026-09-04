@@ -13,6 +13,24 @@ export class Camera {
   /** Borde izquierdo del área visible, en coordenadas del mundo. */
   x = 0;
 
+  /**
+   * Aumento del campo de batalla. 1 = vista normal.
+   *
+   * No cambia el tamaño del lienzo ni la resolución lógica: multiplica lo que
+   * se dibuja. Con `imageSmoothingEnabled` desactivado el escalado es por
+   * vecino más cercano, así que el pixel art se agranda con el borde duro
+   * intacto en lugar de emborronarse.
+   *
+   * Su efecto secundario es el que de verdad importa en el juego: al acercar
+   * se ve MENOS campo de batalla, así que ganar detalle cuesta perder vista de
+   * conjunto. Es una decisión del jugador, no un ajuste gratis.
+   */
+  private zoomLevel = 1;
+
+  /** Límites del aumento. Por debajo de 1 se vería el borde del mundo. */
+  static readonly MIN_ZOOM = 1;
+  static readonly MAX_ZOOM = 2.5;
+
   /** Desplazamiento vertical de la sacudida por explosiones. */
   shakeY = 0;
   private shakeAmount = 0;
@@ -34,19 +52,50 @@ export class Camera {
     this.x = clamp(this.x, 0, this.maxX);
   }
 
-  /** Ancho visible actual, en píxeles lógicos. */
+  /**
+   * Ancho de mundo visible, en píxeles lógicos.
+   *
+   * OJO: no es el ancho del lienzo, es el trozo de mundo que cabe en él. Con
+   * el doble de aumento cabe la mitad. Todo lo que razona sobre "qué se ve"
+   * —el recorte contra los bordes del mapa, el descarte de lo que queda fuera
+   * de pantalla, el bucle de las tiras de fondo— tiene que usar este valor y
+   * no el del lienzo, o al acercar se vería el vacío del final del mundo.
+   */
   get width(): number {
+    return this.viewWidth / this.zoomLevel;
+  }
+
+  /** Ancho real del lienzo, en píxeles. Solo para borrar el fotograma. */
+  get canvasWidth(): number {
     return this.viewWidth;
+  }
+
+  get zoom(): number {
+    return this.zoomLevel;
+  }
+
+  /**
+   * Fija el aumento manteniendo fijo el centro de la vista.
+   *
+   * Sin recentrar, acercar arrastraría la escena hacia la izquierda: el borde
+   * izquierdo se queda donde está y el mundo visible se encoge desde la
+   * derecha. Conservar el centro es lo que hace que el gesto se sienta como
+   * "acercarme a lo que estoy mirando".
+   */
+  setZoom(next: number): void {
+    const centerX = this.x + this.width * 0.5;
+    this.zoomLevel = clamp(next, Camera.MIN_ZOOM, Camera.MAX_ZOOM);
+    this.x = clamp(centerX - this.width * 0.5, 0, this.maxX);
   }
 
   /** Máximo desplazamiento posible sin salir del mapa. */
   private get maxX(): number {
-    return Math.max(0, WORLD.battlefieldWidth - this.viewWidth);
+    return Math.max(0, WORLD.battlefieldWidth - this.width);
   }
 
   /** Coloca la cámara de golpe, sin suavizado (al iniciar un nivel). */
   snapTo(worldX: number): void {
-    this.x = clamp(worldX - this.viewWidth * 0.5, 0, this.maxX);
+    this.x = clamp(worldX - this.width * 0.5, 0, this.maxX);
   }
 
   /** Desplazamiento manual del jugador (arrastre o teclas). */
@@ -77,7 +126,7 @@ export class Camera {
       return;
     }
 
-    const target = clamp(focusX - this.viewWidth * 0.5, 0, this.maxX);
+    const target = clamp(focusX - this.width * 0.5, 0, this.maxX);
 
     // Zona muerta: por debajo de este umbral la cámara no se mueve. Evita el
     // temblor constante provocado por unidades que se empujan entre sí.
@@ -99,6 +148,6 @@ export class Camera {
   /** `true` si algo situado en `worldX` con ese ancho puede verse. */
   isVisible(worldX: number, width: number): boolean {
     const screenX = worldX - this.x;
-    return screenX + width > -8 && screenX - width < this.viewWidth + 8;
+    return screenX + width > -8 && screenX - width < this.width + 8;
   }
 }

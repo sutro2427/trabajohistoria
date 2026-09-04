@@ -42,6 +42,7 @@ export class LobbyScreen {
   private readonly nameLabel: HTMLElement;
   private readonly status: HTMLElement;
   private readonly roster: HTMLElement;
+  private readonly reason: HTMLElement;
 
   private myName = '';
   private busy = false;
@@ -56,6 +57,7 @@ export class LobbyScreen {
    */
   private lastSnapshot: LobbySnapshot = { state: 'lobby', startedAt: null, participants: [] };
   private lastOnline = false;
+  private lastReason: string | null = null;
 
   constructor(private readonly handlers: LobbyHandlers) {
     this.root = requireElement('lobby-screen');
@@ -68,6 +70,7 @@ export class LobbyScreen {
     this.nameLabel = requireElement('lobby-name');
     this.status = requireElement('lobby-status');
     this.roster = requireElement('roster');
+    this.reason = requireElement('lobby-reason');
 
     this.joinButton.addEventListener('click', () => void this.submit());
     this.input.addEventListener('keydown', (e) => {
@@ -126,7 +129,7 @@ export class LobbyScreen {
     this.waitStep.hidden = false;
     // Se repinta con lo último conocido: si la salida ya estaba dada (alguien
     // que llega tarde), tiene que ver el botón de empezar inmediatamente.
-    this.render(this.lastSnapshot, this.lastOnline);
+    this.render(this.lastSnapshot, this.lastOnline, this.lastReason);
   }
 
   /**
@@ -148,18 +151,25 @@ export class LobbyScreen {
   }
 
   /** Refresca la lista de participantes y el estado con lo que llega de la sala. */
-  render(snapshot: LobbySnapshot, online: boolean): void {
+  render(snapshot: LobbySnapshot, online: boolean, offlineReason: string | null = null): void {
     this.lastSnapshot = snapshot;
     this.lastOnline = online;
+    this.lastReason = offlineReason;
 
     if (!online) {
       // Sin sala compartida no hay salida que esperar: se puede empezar ya.
+      // El motivo va debajo, en pequeño: al alumno no le sirve de nada, pero al
+      // profesor que mira por encima del hombro le dice exactamente qué falta.
       this.status.textContent = 'Sin conexión con la sala: puedes jugar por tu cuenta.';
+      this.reason.textContent = offlineReason ?? '';
+      this.reason.hidden = offlineReason === null;
       this.roster.replaceChildren();
       this.soloButton.textContent = 'Empezar';
       this.soloButton.hidden = false;
       return;
     }
+
+    this.reason.hidden = true;
 
     const ready = snapshot.participants.filter((p) => p.ready).length;
     const total = snapshot.participants.length;

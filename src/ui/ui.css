@@ -1426,6 +1426,21 @@ html, body {
   color: var(--olive-light);
 }
 
+/* Cuando el "enlace de la clase" es en realidad un aviso de que no hay sala,
+   deja de parecer un enlace: si no, se lee por encima y no se atiende. */
+.admin-share code.is-warning {
+  color: #ff9a8a;
+  font-style: normal;
+}
+
+.lobby-reason {
+  margin: 0.6em 0 0;
+  font-size: clamp(8px, 1.1vw, 11px);
+  line-height: 1.5;
+  color: #ff9a8a;
+  opacity: 0.9;
+}
+
 .admin-share code {
   color: var(--sand);
   word-break: break-all;
@@ -1719,6 +1734,32 @@ html, body {
 .pause-btn {
   top: 50px;
   right: 6px;
+}
+
+/* --------------------------------------------------------------------------
+   ACERCAR Y ALEJAR
+   En la esquina IZQUIERDA, no en la derecha: la derecha ya tiene pantalla
+   completa, menú y posiciones, y son botones que se pulsan mucho más a menudo
+   que estos. Además, en un teléfono en horizontal la mano izquierda es la que
+   queda libre mientras la derecha produce tropa.
+   -------------------------------------------------------------------------- */
+.zoom-controls {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.zoom-controls[hidden] { display: none !important; }
+
+.zoom-controls .corner-btn {
+  position: static;
+  font-size: 20px;
+  font-weight: bold;
 }
 
 /* El botón de salida de la sala de espera. Aparece de golpe cuando el profesor

@@ -45,6 +45,18 @@ export interface ICompetition {
   readonly online: boolean;
 
   /**
+   * Por qué se está jugando sin sala compartida, o `null` si sí la hay.
+   *
+   * Existe porque el fallo tiene dos causas muy distintas y hasta ahora las
+   * dos se veían igual —un genérico "sin conexión"— cuando la solución de cada
+   * una está en un sitio distinto: o falta la configuración en el despliegue,
+   * o está puesta y no se llega al servidor. Un despliegue sin las variables
+   * de entorno cae en modo local **en silencio**, y esa es exactamente la
+   * clase de fallo que se descubre en mitad de la clase.
+   */
+  readonly offlineReason: string | null;
+
+  /**
    * Entra en la sala con un nombre.
    * @returns el identificador del participante, o un error si el nombre ya existe.
    */

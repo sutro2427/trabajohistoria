@@ -29,7 +29,15 @@ import { isAdminRequested } from './campaign/adminAccess.js';
  */
 async function createCompetition(): Promise<ICompetition> {
   const settings = readFirebaseSettings();
-  if (!settings) return new LocalCompetition();
+  if (!settings) {
+    // La causa número uno, y la que más cuesta descubrir porque no da ningún
+    // error: se desplegó sin las variables de entorno y el juego cayó a modo
+    // local sin decir nada. Aquí sí lo dice, y dice dónde se arregla.
+    return new LocalCompetition(
+      'Este despliegue no tiene configurado Firebase: faltan las variables VITE_FIREBASE_* ' +
+        'en Netlify (Site configuration → Environment variables). Hay que añadirlas y volver a desplegar.',
+    );
+  }
 
   try {
     // Carga diferida: el SDK de Firebase pesa, y quien juega en modo local no
@@ -38,7 +46,11 @@ async function createCompetition(): Promise<ICompetition> {
     return new FirebaseCompetition(settings, readRoomId());
   } catch (error) {
     console.warn('Competencia en red no disponible, se juega en local:', error);
-    return new LocalCompetition();
+    return new LocalCompetition(
+      'Firebase está configurado pero no se pudo iniciar. Comprueba en la consola de Firebase ' +
+        'que Firestore existe, que la autenticación anónima está activada y que este dominio ' +
+        'figura en los dominios autorizados.',
+    );
   }
 }
 

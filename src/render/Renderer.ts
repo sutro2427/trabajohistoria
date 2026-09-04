@@ -186,10 +186,19 @@ export class Renderer {
     const ctx = this.ctx;
     const cam = this.camera.x;
 
-    ctx.clearRect(0, 0, this.camera.width, WORLD.logicalHeight);
+    ctx.clearRect(0, 0, this.camera.canvasWidth, WORLD.logicalHeight);
     ctx.save();
-    // La sacudida de cámara se aplica una sola vez, a todo el fotograma.
-    ctx.translate(0, Math.round(this.camera.shakeY));
+
+    // Aumento y sacudida, en una sola transformación para todo el fotograma.
+    //
+    // El escalado se ancla a la LÍNEA DE SUELO y no a la esquina superior.
+    // Escalando desde arriba, con el doble de aumento solo se vería la mitad
+    // superior del mundo —o sea, cielo— y el suelo, las unidades y las bases
+    // quedarían fuera de pantalla. Anclando al suelo, lo que se recorta al
+    // acercar es el cielo por arriba, que es exactamente lo que sobra.
+    const zoom = this.camera.zoom;
+    ctx.translate(0, WORLD.groundY * (1 - zoom) + Math.round(this.camera.shakeY));
+    if (zoom !== 1) ctx.scale(zoom, zoom);
 
     this.drawBackground(cam);
     if (menuTime !== null) this.drawMenuAtmosphere(cam, menuTime);

@@ -170,6 +170,7 @@
                 Esperando a que el profesor dé la salida…
               </p>
               <ul class="roster" id="roster" data-testid="roster"></ul>
+              <p class="lobby-reason" id="lobby-reason" data-testid="lobby-reason" hidden></p>
               <!-- La señal de salida hecha visible: no existe hasta que el
                    profesor la da (ver LobbyScreen). -->
               <button type="button" class="btn btn-primary" id="btn-solo" data-testid="btn-solo" hidden>
@@ -240,6 +241,16 @@
         >
           <span class="glyph-expand" aria-hidden="true"></span>
         </button>
+
+        <!-- Acercar y alejar. El gesto de pellizcar funciona igual, pero un
+             gesto invisible no lo descubre todo el mundo, y en clase nadie va a
+             leer instrucciones. -->
+        <div id="zoom-controls" class="zoom-controls" data-testid="zoom-controls" hidden>
+          <button type="button" class="corner-btn" id="btn-zoom-in" data-testid="btn-zoom-in"
+                  title="Acercar" aria-label="Acercar">+</button>
+          <button type="button" class="corner-btn" id="btn-zoom-out" data-testid="btn-zoom-out"
+                  title="Alejar" aria-label="Alejar">−</button>
+        </div>
 
         <!-- Acceso rápido al panel durante la partida -->
         <button

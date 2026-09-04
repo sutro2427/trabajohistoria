@@ -71,6 +71,7 @@ function expiryFields(now: number): { expiresAt: number; expiresAtTs: Timestamp 
 
 export class FirebaseCompetition implements ICompetition {
   readonly online = true;
+  readonly offlineReason = null;
 
   private readonly app: FirebaseApp;
   private readonly db: Firestore;

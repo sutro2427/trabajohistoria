@@ -12,7 +12,7 @@ import { Renderer } from '../render/Renderer.js';
 import { SpriteAtlas } from '../render/SpriteAtlas.js';
 import { ViewportManager } from '../render/Viewport.js';
 import { CommandBar } from '../ui/CommandBar.js';
-import { Hud } from '../ui/Hud.js';
+import { Hud, requireElement } from '../ui/Hud.js';
 import { LobbyScreen } from '../ui/LobbyScreen.js';
 import { FullscreenButton } from '../ui/FullscreenButton.js';
 import { ResultOverlay } from '../ui/ResultOverlay.js';
@@ -65,6 +65,8 @@ export class Game {
   private readonly viewport: ViewportManager;
   /** Raíz de la aplicación; lleva la clase que retira el HUD fuera del combate. */
   private readonly appRoot = document.getElementById('app');
+  /** Botones de acercar y alejar; solo se ven durante el combate. */
+  private readonly zoomControls: HTMLElement;
   /**
    * Panel del profesor. Solo existe si se entró con `?admin`: en la página de
    * un alumno ni siquiera se construye, así que no hay nada que abrir desde la
@@ -137,6 +139,14 @@ export class Game {
     this.input = new InputManager(canvas, this.camera, this.viewport.size.width);
 
     new FullscreenButton();
+    this.zoomControls = requireElement('zoom-controls');
+    (requireElement('btn-zoom-in') as HTMLButtonElement).addEventListener('click', () =>
+      this.input.zoomBy(0.5),
+    );
+    (requireElement('btn-zoom-out') as HTMLButtonElement).addEventListener('click', () =>
+      this.input.zoomBy(-0.5),
+    );
+
     this.board = new ScoreBoard();
     this.lobby = new LobbyScreen({
       onJoin: (name) => this.joinCompetition(name),
@@ -174,6 +184,7 @@ export class Game {
         },
         options.roomId ?? 'clase',
         this.competition.online,
+        this.competition.offlineReason,
       );
     }
 
@@ -195,7 +206,6 @@ export class Game {
   private onViewportChange(size: { width: number; height: number }): void {
     this.camera.setViewWidth(size.width);
     this.input.setLogicalWidth(size.width);
-    this.commandBar?.setLogicalWidth(size.width);
   }
 
   /** Arranca la aplicación en la pantalla de acceso. */
@@ -312,6 +322,7 @@ export class Game {
 
     this.pauseMenu.hide();
     this.pauseMenu.setToggleVisible(false);
+    this.zoomControls.hidden = true;
     this.board.setToggleVisible(false);
     this.overlay.hide();
     this.setMenuMode(true);
@@ -343,7 +354,7 @@ export class Game {
   /** Reacciona a los cambios de la sala: entradas, salidas y la señal de inicio. */
   private onLobbyChange(snapshot: LobbySnapshot): void {
     this.snapshot = snapshot;
-    this.lobby.render(snapshot, this.competition.online);
+    this.lobby.render(snapshot, this.competition.online, this.competition.offlineReason);
     this.checkIfRemoved(snapshot);
     // El panel se refresca SIEMPRE, no solo si está abierto: pintar unas
     // pocas filas de DOM es gratis, y así al pulsar el botón ya está al día.
@@ -447,7 +458,6 @@ export class Game {
           if (this.interactive) this.session.launchPower(powerId, worldX);
         },
       },
-      this.viewport.size.width,
     );
     this.commandBar.buildFor(this.session.buildable, this.session.powers);
 
@@ -457,6 +467,10 @@ export class Game {
 
     bus.on('level:ended', (payload) => this.onLevelEnded(payload));
 
+    // Cada operación empieza con la vista completa: el aumento es una
+    // preferencia del momento, no un ajuste que deba arrastrarse de un nivel
+    // al siguiente sin que el jugador se dé cuenta.
+    this.camera.setZoom(1);
     this.camera.snapTo(WORLD.usBaseX + 60);
     this.fx.clear();
     this.interactive = false;
@@ -472,6 +486,7 @@ export class Game {
     // El botón de pausa solo existe mientras hay algo que pausar: enseñarlo en
     // un informe previo invitaría a pulsarlo para nada.
     this.pauseMenu.setToggleVisible(true);
+    this.zoomControls.hidden = false;
   }
 
   /** Cierra el nivel: registra el resultado, publica y decide qué viene después. */
@@ -479,6 +494,7 @@ export class Game {
     this.interactive = false;
     this.paused = false;
     this.pauseMenu.setToggleVisible(false);
+    this.zoomControls.hidden = true;
     const world = this.session.world;
     const level = this.session.level;
     const team = world.teams.US;
@@ -574,6 +590,7 @@ export class Game {
       interactive: this.interactive,
       powerCooldowns: new Map(team.powers.map((p) => [p.defId, p.cooldown])),
       cameraX: this.camera.x,
+      viewWidth: this.camera.width,
     });
 
     if (this.menuTime !== null) {

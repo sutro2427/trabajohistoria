@@ -64,6 +64,10 @@ hay barra de direcciones ni pestañas, y se gana cerca de un 40 % de altura úti
 la diferencia entre ver el campo de batalla y ver una franja. El propio juego lo explica
 en la portada cuando detecta un iPhone.
 
+**Acercar la vista.** Pellizcando con dos dedos, o con los botones **+** y **−** de la
+izquierda. No es solo comodidad: al acercar se ve menos campo de batalla, así que ganar
+detalle cuesta perder vista de conjunto. Cada operación empieza con la vista completa.
+
 **Salir y volver.** El botón ☰ de la esquina abre el menú de pausa en cualquier momento,
 y **el reloj de la operación se detiene** mientras está abierto: atender una pregunta en
 clase no cuesta la partida. Desde ahí se puede seguir, reintentar la operación, ganar
@@ -110,6 +114,7 @@ Las dos primeras operaciones se aprenden jugándolas. **La tercera se endureció
 | Bombas de racimo | botón *Bombas* → tocar el mapa | `B` |
 | Atacar / Defender / Retirarse | botones de *Órdenes* | `A` `D` `R` |
 | Mover la cámara | arrastrar con el dedo | `←` `→` |
+| Acercar / alejar | pellizcar, o los botones **+** y **−** | rueda del ratón, `+` `−` |
 | Ver posiciones | botón 🏆 | — |
 
 **La apertura que funciona:** dos recolectores, luego una guardia de tres soldados, y solo entonces ampliar la economía. Dedicar los primeros treinta segundos solo a recolectores es suicida: la IA ataca antes de que rindan.
@@ -156,7 +161,9 @@ El repositorio ya trae `netlify.toml`. Conecta el repo desde el panel de Netlify
 
 ### Activar el panel compartido (Firebase)
 
-Sin esto el juego funciona igual, pero cada alumno ve solo su progreso.
+Sin esto el juego funciona igual, pero cada alumno ve solo su progreso. Si al entrar
+aparece **"Sin conexión con la sala"**, el propio juego dice debajo qué falta: o las
+variables de entorno no están en el despliegue, o están y no se llega a Firebase.
 
 1. Crea un proyecto en [console.firebase.google.com](https://console.firebase.google.com).
 2. **Firestore Database** → Crear base de datos → modo producción.

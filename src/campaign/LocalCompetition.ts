@@ -22,6 +22,13 @@ import { nameKey } from './nameValidation.js';
 export class LocalCompetition implements ICompetition {
   readonly online = false;
 
+  /**
+   * @param offlineReason Qué hay que arreglar para tener sala compartida. Se
+   *   enseña tal cual al profesor y al alumno: es la única pista que van a
+   *   tener, y llega en el peor momento posible para ponerse a investigar.
+   */
+  constructor(readonly offlineReason: string) {}
+
   private state: LobbyState = 'lobby';
   private startedAt: number | null = null;
   private self: Participant | null = null;

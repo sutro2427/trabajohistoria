@@ -21,6 +21,12 @@ export interface CommandBarState {
   readonly powerCooldowns: ReadonlyMap<string, number>;
   /** Coordenada del mundo en el borde izquierdo de la pantalla. */
   readonly cameraX: number;
+  /**
+   * Ancho de MUNDO visible en pantalla. No es el ancho del lienzo: con la
+   * vista acercada cabe menos mundo, y sin este dato las bombas caerían más a
+   * la derecha cuanto más acercado estuviera el jugador.
+   */
+  readonly viewWidth: number;
 }
 
 /**
@@ -67,7 +73,6 @@ export class CommandBar {
   constructor(
     bus: EventBus<GameEvents>,
     private readonly handlers: CommandBarHandlers,
-    private logicalWidth: number,
   ) {
     this.productionRoot = requireElement('production-buttons');
     this.powersSection = requireElement('powers-section');
@@ -114,15 +119,6 @@ export class CommandBar {
         if (team === 'US') this.showToast('Suministros insuficientes');
       }),
     );
-  }
-
-  /**
-   * Ajusta el ancho lógico tras un cambio de tamaño.
-   * Sin esto, tras girar el teléfono las bombas caerían desplazadas respecto
-   * al punto que tocó el jugador.
-   */
-  setLogicalWidth(width: number): void {
-    this.logicalWidth = width;
   }
 
   /** Registra un oyente del DOM y apunta su baja. */
@@ -206,9 +202,11 @@ export class CommandBar {
   /**
    * Convierte el toque en una coordenada del mundo y lanza el poder.
    *
-   * La conversión tiene que pasar por el ancho real en pantalla porque el
-   * canvas se muestra escalado: usar los píxeles del evento sin convertir
-   * haría caer las bombas en un sitio distinto en cada tamaño de pantalla.
+   * La conversión pasa por el ancho real en pantalla (el canvas se muestra
+   * escalado) y por el ancho de mundo visible, que la barra recibe en cada
+   * fotograma. Tomarlo así, y no guardarlo al girar el teléfono, es lo que
+   * hace que siga siendo correcto al acercar o alejar la vista: el aumento
+   * cambia decenas de veces durante un pellizco.
    */
   private onAimPointer(e: PointerEvent): void {
     if (!this.armedPower) return;
@@ -216,7 +214,7 @@ export class CommandBar {
 
     const rect = this.aimLayer.getBoundingClientRect();
     const ratio = (e.clientX - rect.left) / rect.width;
-    const worldX = this.pendingCameraX + ratio * this.logicalWidth;
+    const worldX = this.pendingCameraX + ratio * this.pendingViewWidth;
 
     const powerId = this.armedPower;
     this.disarm();
@@ -225,6 +223,8 @@ export class CommandBar {
 
   /** Última posición conocida de la cámara, para traducir el toque. */
   private pendingCameraX = 0;
+  /** Último ancho de mundo visible, para lo mismo. */
+  private pendingViewWidth = 0;
 
   private onKeyDown(e: KeyboardEvent): void {
     if (e.repeat) return;
@@ -267,6 +267,7 @@ export class CommandBar {
 
   update(dt: number, state: CommandBarState): void {
     this.pendingCameraX = state.cameraX;
+    this.pendingViewWidth = state.viewWidth;
 
     // Deshabilitar lo que no se puede pagar comunica el estado de la economía
     // sin que el jugador tenga que leer el contador.
