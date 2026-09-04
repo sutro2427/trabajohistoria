@@ -167,9 +167,9 @@ export class InputManager {
     this.camera.setZoom(this.camera.zoom + delta);
   }
 
-  /** Devuelve la vista a su tamaño normal. */
+  /** Devuelve la vista al aumento inicial de esta pantalla. */
   resetZoom(): void {
-    this.camera.setZoom(1);
+    this.camera.resetZoom();
   }
 
   /** Ajusta el ancho lógico tras un cambio de tamaño o de orientación. */

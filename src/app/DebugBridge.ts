@@ -59,6 +59,8 @@ export interface DebugApi {
   launchPower(powerId: string, worldX: number): void;
   /** Fija los suministros del jugador. Solo para pruebas automatizadas. */
   setSupplies(amount: number): void;
+  /** Fija el aumento de la cámara. Solo para pruebas automatizadas. */
+  setZoom(zoom: number): void;
 }
 
 declare global {
@@ -155,6 +157,14 @@ export function installDebugBridge(game: Game): void {
      * economía concreta —el bombardeo cuesta 30— sin tener que jugar dos
      * minutos hasta reunirlos.
      */
+    /**
+     * Fija el aumento. Existe para poder comparar encuadres en una captura sin
+     * tener que reproducir un pellizco de dos dedos.
+     */
+    setZoom(zoom: number): void {
+      game.setZoom(zoom);
+    },
+
     setSupplies(amount: number): void {
       const team = game.getSession().world.teams.US;
       team.supplies = Math.max(0, amount);

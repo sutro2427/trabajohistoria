@@ -206,6 +206,10 @@ export class Game {
   private onViewportChange(size: { width: number; height: number }): void {
     this.camera.setViewWidth(size.width);
     this.input.setLogicalWidth(size.width);
+    // Girar el teléfono o entrar en pantalla completa cambia el ancho lógico, y
+    // con él cuánto mundo cabe: se recalcula el aumento para seguir enseñando
+    // el mismo trozo de campo en lugar de encogerlo todo de golpe.
+    this.camera.resetZoom();
   }
 
   /** Arranca la aplicación en la pantalla de acceso. */
@@ -467,10 +471,10 @@ export class Game {
 
     bus.on('level:ended', (payload) => this.onLevelEnded(payload));
 
-    // Cada operación empieza con la vista completa: el aumento es una
-    // preferencia del momento, no un ajuste que deba arrastrarse de un nivel
-    // al siguiente sin que el jugador se dé cuenta.
-    this.camera.setZoom(1);
+    // Cada operación empieza con el aumento propio de esta pantalla: el que el
+    // jugador haya elegido a mano es una preferencia del momento, no un ajuste
+    // que deba arrastrarse de un nivel al siguiente sin que se dé cuenta.
+    this.camera.resetZoom();
     this.camera.snapTo(WORLD.usBaseX + 60);
     this.fx.clear();
     this.interactive = false;
@@ -658,6 +662,11 @@ export class Game {
 
   setTimeScale(scale: number): void {
     this.loop.setTimeScale(scale);
+  }
+
+  /** Fija el aumento de la cámara. Lo usan las pruebas automatizadas. */
+  setZoom(zoom: number): void {
+    this.camera.setZoom(zoom);
   }
 
   getFps(): number {

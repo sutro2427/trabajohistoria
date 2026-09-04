@@ -43,9 +43,14 @@
               <span data-testid="hud-population"><span id="hud-pop">0</span> / <span id="hud-pop-max">0</span></span>
             </span>
           </div>
+          <!-- El reloj va al CENTRO y no en la esquina: la esquina derecha es
+               ahora la columna de botones, y encima el reloj es el dato que más
+               se mira en el último minuto. -->
+          <div class="hud-group hud-center">
+            <span class="hud-chip hud-timer" id="hud-timer" data-testid="hud-timer">0:00</span>
+          </div>
           <div class="hud-group hud-right">
             <span class="hud-objective" id="hud-objective" data-testid="hud-objective">Objetivo</span>
-            <span class="hud-chip hud-timer" id="hud-timer" data-testid="hud-timer">0:00</span>
           </div>
         </header>
 
@@ -197,18 +202,6 @@
         <!-- Accesible en cualquier momento de la partida: el reloj de la
              operación se detiene mientras está abierto, así que abrirlo no
              cuesta la partida. -->
-        <button
-          type="button"
-          id="btn-pause"
-          class="corner-btn pause-btn"
-          data-testid="btn-pause"
-          title="Menú"
-          aria-label="Menú"
-          hidden
-        >
-          <span class="glyph-menu" aria-hidden="true"></span>
-        </button>
-
         <div id="pause-screen" class="screen-overlay" data-testid="pause-screen" hidden>
           <div class="panel">
             <h1 id="pause-title">En pausa</h1>
@@ -230,39 +223,59 @@
           </div>
         </div>
 
-        <!-- Expandir a pantalla completa, como en un vídeo -->
-        <button
-          type="button"
-          id="btn-fullscreen"
-          class="corner-btn fullscreen-btn"
-          data-testid="btn-fullscreen"
-          title="Pantalla completa"
-          aria-label="Pantalla completa"
-        >
-          <span class="glyph-expand" aria-hidden="true"></span>
-        </button>
+        <!-- ===== Columna de herramientas =====
+             Todos los botones secundarios en un solo sitio, del mismo tamaño y
+             en el mismo borde. Antes estaban repartidos por la pantalla —uno
+             arriba a la derecha, otro a media altura, el zoom a la izquierda— y
+             se leían como elementos sueltos encima del juego en lugar de como
+             una interfaz. Agrupados, además, dejan libre todo el campo de
+             batalla salvo una franja estrecha. -->
+        <div id="side-tools" class="side-tools">
+          <button
+            type="button"
+            id="btn-fullscreen"
+            class="tool-btn"
+            data-testid="btn-fullscreen"
+            title="Pantalla completa"
+            aria-label="Pantalla completa"
+          >
+            <span class="glyph-expand" aria-hidden="true"></span>
+          </button>
 
-        <!-- Acercar y alejar. El gesto de pellizcar funciona igual, pero un
-             gesto invisible no lo descubre todo el mundo, y en clase nadie va a
-             leer instrucciones. -->
-        <div id="zoom-controls" class="zoom-controls" data-testid="zoom-controls" hidden>
-          <button type="button" class="corner-btn" id="btn-zoom-in" data-testid="btn-zoom-in"
-                  title="Acercar" aria-label="Acercar">+</button>
-          <button type="button" class="corner-btn" id="btn-zoom-out" data-testid="btn-zoom-out"
-                  title="Alejar" aria-label="Alejar">−</button>
+          <button
+            type="button"
+            id="btn-pause"
+            class="tool-btn"
+            data-testid="btn-pause"
+            title="Menú"
+            aria-label="Menú"
+            hidden
+          >
+            <span class="glyph-menu" aria-hidden="true"></span>
+          </button>
+
+          <button
+            type="button"
+            id="btn-board"
+            class="tool-btn"
+            data-testid="btn-board"
+            title="Ver posiciones"
+            aria-label="Ver posiciones"
+            hidden
+          >
+            🏆
+          </button>
+
+          <!-- Acercar y alejar. Pellizcar hace lo mismo, pero un gesto
+               invisible no lo descubre todo el mundo y en clase nadie va a leer
+               instrucciones. -->
+          <div id="zoom-controls" class="zoom-group" data-testid="zoom-controls" hidden>
+            <button type="button" class="tool-btn" id="btn-zoom-in" data-testid="btn-zoom-in"
+                    title="Acercar" aria-label="Acercar">+</button>
+            <button type="button" class="tool-btn" id="btn-zoom-out" data-testid="btn-zoom-out"
+                    title="Alejar" aria-label="Alejar">−</button>
+          </div>
         </div>
-
-        <!-- Acceso rápido al panel durante la partida -->
-        <button
-          type="button"
-          id="btn-board"
-          class="corner-btn board-toggle"
-          data-testid="btn-board"
-          title="Ver posiciones"
-          hidden
-        >
-          🏆
-        </button>
 
         <!-- ===== Capa de mensajes: victoria y derrota ===== -->
         <div id="overlay-screen" class="screen-overlay" data-testid="overlay-screen" hidden>

@@ -64,9 +64,11 @@ hay barra de direcciones ni pestañas, y se gana cerca de un 40 % de altura úti
 la diferencia entre ver el campo de batalla y ver una franja. El propio juego lo explica
 en la portada cuando detecta un iPhone.
 
-**Acercar la vista.** Pellizcando con dos dedos, o con los botones **+** y **−** de la
-izquierda. No es solo comodidad: al acercar se ve menos campo de batalla, así que ganar
-detalle cuesta perder vista de conjunto. Cada operación empieza con la vista completa.
+**Acercar la vista.** El juego ya arranca acercado —calcula el aumento para enseñar el
+mismo trozo de campo en cualquier pantalla, en vez de encogerlo todo en un móvil
+panorámico—, y se ajusta pellizcando con dos dedos o con los botones **+** y **−** de la
+columna derecha. No es solo comodidad: al acercar se ve menos campo de batalla, así que
+ganar detalle cuesta perder vista de conjunto.
 
 **Salir y volver.** El botón ☰ de la esquina abre el menú de pausa en cualquier momento,
 y **el reloj de la operación se detiene** mientras está abierto: atender una pregunta en

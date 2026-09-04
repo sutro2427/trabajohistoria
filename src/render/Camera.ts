@@ -29,7 +29,42 @@ export class Camera {
 
   /** Límites del aumento. Por debajo de 1 se vería el borde del mundo. */
   static readonly MIN_ZOOM = 1;
-  static readonly MAX_ZOOM = 2.5;
+  static readonly MAX_ZOOM = 3.5;
+
+  /**
+   * Ancho de mundo que se busca tener a la vista, en píxeles lógicos.
+   *
+   * Es la cifra que fija el aumento por defecto, y merece explicación porque
+   * es lo que hacía que el juego se viera diminuto en un teléfono.
+   *
+   * El lienzo se adapta al aspecto real de la pantalla: un móvil muy
+   * panorámico pide un ancho lógico de 760 px. Dibujar 760 px de mundo en esa
+   * pantalla deja cada píxel del juego del tamaño de un píxel de pantalla, y un
+   * soldado de 22 px de alto se queda en una mota. Peor todavía, tres cuartas
+   * partes de lo que se ve es cielo vacío.
+   *
+   * Con este objetivo, el aumento inicial se calcula para enseñar SIEMPRE más o
+   * menos el mismo trozo de campo de batalla, mida lo que mida la pantalla. Los
+   * 400 px son algo menos de un tercio del mapa (1260): cabe la base propia con
+   * sus primeros depósitos, o una línea de combate entera, que es la unidad de
+   * información con la que se juega. Y las unidades pasan de medir 22 píxeles
+   * de pantalla a medir más de 50, que es la diferencia entre distinguir un
+   * francotirador de un soldado y no distinguirlos.
+   */
+  static readonly TARGET_VIEW_WIDTH = 400;
+
+  /**
+   * Dónde se dibuja la línea de suelo, en píxeles de pantalla, con la vista
+   * acercada del todo.
+   *
+   * Sin esto, acercar empeoraba el encuadre en vez de mejorarlo. La línea de
+   * suelo vive en la fila 206 de 270, o sea al 76 % de la altura, y al escalar
+   * anclando ahí se quedaba clavada al 76 %: las unidades pegadas al borde
+   * inferior y todo el espacio ganado ocupado por la pared de selva que tienen
+   * detrás. Subiéndola hacia el 63 % conforme se acerca, la tropa queda
+   * centrada y el terreno que pisa se ve, que es lo que se está mirando.
+   */
+  private static readonly ZOOMED_GROUND_Y = 172;
 
   /** Desplazamiento vertical de la sacudida por explosiones. */
   shakeY = 0;
@@ -53,6 +88,22 @@ export class Camera {
   }
 
   /**
+   * Aumento con el que empieza una operación en esta pantalla.
+   *
+   * No es 1: en una pantalla ancha, 1 significa ver medio mapa de golpe y con
+   * las unidades del tamaño de una mota. Se calcula para que el trozo de campo
+   * visible sea parecido en cualquier aparato (ver `TARGET_VIEW_WIDTH`).
+   */
+  get defaultZoom(): number {
+    return clamp(this.viewWidth / Camera.TARGET_VIEW_WIDTH, Camera.MIN_ZOOM, Camera.MAX_ZOOM);
+  }
+
+  /** Vuelve al aumento inicial de esta pantalla. */
+  resetZoom(): void {
+    this.setZoom(this.defaultZoom);
+  }
+
+  /**
    * Ancho de mundo visible, en píxeles lógicos.
    *
    * OJO: no es el ancho del lienzo, es el trozo de mundo que cabe en él. Con
@@ -72,6 +123,19 @@ export class Camera {
 
   get zoom(): number {
     return this.zoomLevel;
+  }
+
+  /**
+   * Fila de pantalla en la que se dibuja la línea de suelo.
+   *
+   * Es la mitad vertical de la transformación de dibujo: el render escala por
+   * `zoom` y traslada para que el suelo caiga aquí. A aumento 1 devuelve la
+   * posición original, así que la vista sin acercar se ve exactamente como
+   * siempre.
+   */
+  get groundScreenY(): number {
+    const t = clamp((this.zoomLevel - 1) / 1.2, 0, 1);
+    return WORLD.groundY + (Camera.ZOOMED_GROUND_Y - WORLD.groundY) * t;
   }
 
   /**

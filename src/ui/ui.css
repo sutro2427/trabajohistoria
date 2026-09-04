@@ -156,6 +156,18 @@ html, body {
 }
 
 .hud-group { display: flex; align-items: center; gap: clamp(4px, 1vw, 12px); }
+
+/* Tres grupos: recursos a la izquierda, reloj centrado y objetivo a la derecha.
+   El centrado es absoluto y no por reparto de espacio, porque el grupo de la
+   izquierda cambia de ancho al pasar de 9 a 190 suministros y el reloj se
+   movería con él: un número que baila mientras se lee es lo peor que puede
+   hacer un contador. */
+.hud-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 .hud-right { margin-left: auto; }
 
 .hud-chip {
@@ -427,10 +439,10 @@ html, body {
   padding-right: max(clamp(6px, 1.4vw, 16px), env(safe-area-inset-right));
 }
 
-/* El HUD, además del notch, reserva la esquina del botón de pantalla completa:
-   los 50 px son el botón (38) más su margen a ambos lados. */
+/* El HUD reserva a su derecha el ancho de la columna de herramientas, para que
+   el objetivo de la operación no quede debajo de los botones. */
 #hud {
-  padding-right: max(50px, calc(env(safe-area-inset-right) + 50px));
+  padding-right: max(56px, calc(env(safe-area-inset-right) + 56px));
 }
 
 /* --------------------------------------------------------------------------
@@ -839,34 +851,67 @@ html, body {
    Botones de esquina: posiciones y pantalla completa
    -------------------------------------------------------------------------- */
 
-.corner-btn {
+/* --------------------------------------------------------------------------
+   COLUMNA DE HERRAMIENTAS
+   Todos los botones secundarios —pantalla completa, menú, posiciones, zoom— en
+   una sola columna pegada al borde derecho. Antes estaban repartidos por la
+   pantalla y se leían como elementos sueltos flotando sobre el juego; además,
+   el de zoom caía justo encima de la torre de vigilancia de la base propia.
+   -------------------------------------------------------------------------- */
+
+.side-tools {
   position: absolute;
-  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  /* Respeta el notch, que en horizontal ocupa un lateral entero. */
+  right: max(6px, env(safe-area-inset-right));
   z-index: 7;
-  width: 38px;
-  height: 38px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+
+/* Solo los botones capturan el toque: la columna es un contenedor y no debe
+   robar el arrastre de cámara en el hueco entre botones. */
+.side-tools > * {
+  pointer-events: auto;
+}
+
+.zoom-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.zoom-group[hidden] { display: none !important; }
+
+.tool-btn {
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
-  font-size: 17px;
+  font: inherit;
+  font-size: 15px;
   line-height: 1;
-  background: rgba(20, 26, 16, 0.88);
+  padding: 0;
+  background: rgba(20, 26, 16, 0.82);
   border: 1px solid var(--olive-dark);
   color: var(--sand);
   cursor: pointer;
-  padding: 0;
 }
 
-.board-toggle {
-  top: 50%;
-  transform: translateY(-50%);
+.tool-btn:active:not(:disabled) {
+  background: rgba(74, 93, 35, 0.9);
 }
 
-/* El de pantalla completa va arriba a la derecha, donde lo espera cualquiera
-   que haya visto un vídeo. */
-.fullscreen-btn {
-  top: 6px;
-  right: 6px;
+.tool-btn:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 1px;
 }
+
+.tool-btn[hidden] { display: none !important; }
 
 /* Icono de expandir dibujado con bordes: dos esquinas enfrentadas, el mismo
    lenguaje visual que el botón de pantalla completa de un reproductor. */
@@ -916,16 +961,27 @@ html, body {
   border-bottom: none;
 }
 
+/* En una pantalla táctil los botones suben al mínimo recomendado para el dedo
+   (44 px en iOS, 48 en Android). Con 34 px se falla más de lo tolerable en
+   mitad de una partida. */
 @media (pointer: coarse) {
-  .corner-btn {
+  .tool-btn {
     width: 44px;
     height: 44px;
-    right: max(6px, env(safe-area-inset-right));
+    font-size: 18px;
+  }
+}
+
+/* Pantallas bajas: con cinco botones de 44 px y sus separaciones no cabe la
+   columna, así que se aprieta antes que dejar que se salga por arriba. */
+@media (max-height: 400px) {
+  .tool-btn {
+    width: 34px;
+    height: 34px;
+    font-size: 15px;
   }
 
-  .fullscreen-btn {
-    top: max(6px, env(safe-area-inset-top));
-  }
+  .side-tools { gap: 3px; }
 }
 
 /* --- Resumen de gestión del final de la campaña --- */
@@ -1730,37 +1786,6 @@ html, body {
 .glyph-menu::before { top: -5px; }
 .glyph-menu::after { top: 5px; }
 
-/* Va bajo el de pantalla completa, en la misma columna de la esquina. */
-.pause-btn {
-  top: 50px;
-  right: 6px;
-}
-
-/* --------------------------------------------------------------------------
-   ACERCAR Y ALEJAR
-   En la esquina IZQUIERDA, no en la derecha: la derecha ya tiene pantalla
-   completa, menú y posiciones, y son botones que se pulsan mucho más a menudo
-   que estos. Además, en un teléfono en horizontal la mano izquierda es la que
-   queda libre mientras la derecha produce tropa.
-   -------------------------------------------------------------------------- */
-.zoom-controls {
-  position: absolute;
-  left: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 7;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.zoom-controls[hidden] { display: none !important; }
-
-.zoom-controls .corner-btn {
-  position: static;
-  font-size: 20px;
-  font-weight: bold;
-}
 
 /* El botón de salida de la sala de espera. Aparece de golpe cuando el profesor
    da la señal, así que tiene que verse desde el otro lado del aula: grande,

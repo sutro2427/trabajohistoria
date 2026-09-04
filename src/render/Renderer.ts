@@ -191,13 +191,15 @@ export class Renderer {
 
     // Aumento y sacudida, en una sola transformación para todo el fotograma.
     //
-    // El escalado se ancla a la LÍNEA DE SUELO y no a la esquina superior.
-    // Escalando desde arriba, con el doble de aumento solo se vería la mitad
-    // superior del mundo —o sea, cielo— y el suelo, las unidades y las bases
-    // quedarían fuera de pantalla. Anclando al suelo, lo que se recorta al
-    // acercar es el cielo por arriba, que es exactamente lo que sobra.
+    // La vertical NO se escala desde la esquina superior: se escala de modo que
+    // la línea de suelo caiga en la fila que pide la cámara. Escalando desde
+    // arriba, al doble de aumento solo se vería la mitad superior del mundo
+    // —o sea, cielo— y el suelo, las unidades y las bases quedarían fuera de
+    // pantalla. Y anclando rígidamente al suelo, la tropa se quedaba pegada al
+    // borde inferior con toda la pared de selva encima. Ver `groundScreenY`.
     const zoom = this.camera.zoom;
-    ctx.translate(0, WORLD.groundY * (1 - zoom) + Math.round(this.camera.shakeY));
+    const groundY = this.camera.groundScreenY;
+    ctx.translate(0, groundY - WORLD.groundY * zoom + Math.round(this.camera.shakeY));
     if (zoom !== 1) ctx.scale(zoom, zoom);
 
     this.drawBackground(cam);
