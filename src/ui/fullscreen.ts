@@ -61,23 +61,52 @@ export async function toggleFullscreen(): Promise<void> {
 }
 
 /**
- * Instrucción para ganar pantalla en este dispositivo, o cadena vacía si no
- * hace falta decir nada.
+ * Instrucciones para ganar pantalla cuando el navegador no puede hacerlo solo.
  *
- * Se distingue el caso de iOS porque es el único en el que el botón no puede
- * hacer nada y la solución está en el menú del navegador, no en el juego.
+ * Devuelve `null` donde no hace falta decir nada: ya se está a pantalla
+ * completa, o el botón funciona por sí mismo.
+ *
+ * El caso de iPhone se distingue del resto porque es el único en el que el
+ * botón NO puede hacer nada y la solución está en el menú del navegador. Ahí
+ * la instrucción no es un pie de página: es lo que todo el mundo va a
+ * necesitar, así que se devuelve en piezas para poder presentarla como un
+ * cartel y no como una nota al pie.
  */
-export function installHint(): string {
-  if (isStandalone()) return '';
+export interface InstallHint {
+  readonly title: string;
+  readonly steps: readonly string[];
+  readonly reward: string;
+}
+
+export function installHint(): InstallHint | null {
+  if (isStandalone()) return null;
 
   const ua = navigator.userAgent;
   const isIos = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && 'ontouchend' in document);
 
   if (isIos) {
-    return 'Para jugar a pantalla completa: pulsa Compartir (⬆) y elige "Añadir a pantalla de inicio". Luego abre el juego desde ese icono.';
+    return {
+      title: 'Para pantalla completa en iPhone',
+      steps: [
+        'Pulsa Compartir ⬆ abajo en Safari',
+        'Elige "Añadir a pantalla de inicio"',
+        'Abre PIXEL WAR desde ese icono',
+      ],
+      reward: 'Sin barras del navegador se gana casi el 40 % de pantalla.',
+    };
   }
+
   if (!fullscreenSupported() && matchMedia('(pointer: coarse)').matches) {
-    return 'Para jugar a pantalla completa, instala el juego desde el menú del navegador ("Añadir a pantalla de inicio").';
+    return {
+      title: 'Para pantalla completa',
+      steps: [
+        'Abre el menú del navegador',
+        'Elige "Añadir a pantalla de inicio" o "Instalar"',
+        'Abre PIXEL WAR desde ese icono',
+      ],
+      reward: 'Sin barras del navegador se gana casi el 40 % de pantalla.',
+    };
   }
-  return '';
+
+  return null;
 }

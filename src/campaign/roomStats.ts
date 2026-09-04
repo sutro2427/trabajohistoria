@@ -17,6 +17,8 @@ import type { LobbySnapshot } from './ICompetition.js';
 export interface RoomRow {
   /** Puesto en la clasificación, empezando en 1. */
   readonly position: number;
+  /** Identificador del participante; el panel lo necesita para expulsarlo. */
+  readonly id: string | null;
   readonly name: string;
   readonly levelsDone: number;
   readonly seconds: number;
@@ -62,10 +64,17 @@ export function computeRoomStats(snapshot: LobbySnapshot): RoomStats {
       },
   );
 
+  // El identificador no viaja en la puntuación —que se mantiene pequeña a
+  // propósito porque cruza la red en cada cambio—, así que se recupera por
+  // nombre, que en una sala es único por construcción: el documento de cada
+  // alumno se guarda bajo su nombre normalizado.
+  const idByName = new Map(snapshot.participants.map((p) => [p.name, p.id]));
+
   const ranked = rankEntries(entries);
 
   const rows: RoomRow[] = ranked.map((entry, index) => ({
     position: index + 1,
+    id: idByName.get(entry.name) ?? null,
     name: entry.name,
     levelsDone: entry.levelsDone,
     seconds: entry.seconds,

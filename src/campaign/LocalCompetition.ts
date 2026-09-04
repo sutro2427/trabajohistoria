@@ -60,6 +60,16 @@ export class LocalCompetition implements ICompetition {
     this.emit();
   }
 
+  /**
+   * En modo local solo existe un participante: el propio jugador. Sacarlo es
+   * lo mismo que vaciar la sala, y se implementa para cumplir el contrato —no
+   * para que sirva de algo: sin red no hay clase a la que moderar.
+   */
+  async removeParticipant(id: string): Promise<void> {
+    if (this.self?.id === id) this.self = null;
+    this.emit();
+  }
+
   async resetCompetition(): Promise<void> {
     this.state = 'lobby';
     this.startedAt = null;

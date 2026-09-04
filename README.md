@@ -20,9 +20,13 @@ Juego de estrategia en tiempo real, **pixel art 2D en vista lateral**, ambientad
 ### Durante la sesión
 
 1. Cada alumno abre el enlace, pulsa **JUGAR**, escribe **nombre y apellido** y queda
-   en la sala de espera.
-2. En el panel ves quién ha entrado. Cuando estén todos, pulsas **Dar la salida**.
-3. Todos arrancan a la vez en la Operación 1.
+   en la sala de espera. **No puede empezar por su cuenta**: el botón de empezar no
+   existe hasta que tú das la salida.
+2. En el panel ves quién ha entrado, en vivo. Si alguien entra con un nombre que no
+   quieres proyectado, la **✕** de su fila lo saca de la sala; vuelve a entrar
+   escribiendo su nombre real, sin tocar el progreso de nadie más.
+3. Cuando estén todos, pulsas **Dar la salida**. A cada alumno le aparece de golpe un
+   botón **¡ADELANTE! EMPEZAR** y arrancan la Operación 1.
 4. **Deja el panel proyectado**: se actualiza solo con las posiciones en vivo —puesto,
    nombre, las tres operaciones como casillas que se van encendiendo, tiempo y
    derrotas—, más el recuento del grupo y un reloj con lo que le queda a la sala.
@@ -33,7 +37,22 @@ Juego de estrategia en tiempo real, **pixel art 2D en vista lateral**, ambientad
 > curiosidad, no como medida de seguridad. Quien protege los datos de verdad son las
 > reglas de `firestore.rules`. Se puede cambiar por despliegue con `VITE_ADMIN_KEY`.
 
-Para otra tanda, **Reiniciar sala**. Con `?sala=2b` abres una sala distinta por curso.
+Para otra tanda, **Reiniciar sala**.
+
+### Un paralelo por sala
+
+Cada sala es una competencia independiente: su propia lista, su propia salida y su
+propia tabla. En el panel, escribe el nombre del paralelo en **Sala** y pulsa **Abrir
+sala** — el enlace para la clase se actualiza solo y el botón **Copiar** lo deja listo
+para pegarlo en el grupo del curso.
+
+| Paralelo | Enlace del profesor | Enlace de la clase |
+|---|---|---|
+| 4°A | `…/?admin&sala=4a` | `…/?sala=4a` |
+| 4°B | `…/?admin&sala=4b` | `…/?sala=4b` |
+
+Puedes tener las dos salas abiertas en dos pestañas y dar la salida a cada una cuando
+le toque. Sin `?sala=` todo el mundo cae en la sala `clase`.
 
 ### En el teléfono
 

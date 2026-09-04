@@ -23,8 +23,13 @@ export interface LobbyHandlers {
  *  2. **Esperar la salida.** Ve quién más está listo y espera a que el
  *     profesor dé la señal.
  *
- * El botón "Jugar ahora" existe como salida de emergencia: si el wifi del
- * aula falla o alguien llega tarde, nadie se queda sin poder jugar.
+ * **El botón de empezar solo aparece cuando el profesor da la salida.** Antes
+ * estaba visible desde el primer momento como salida de emergencia, y eso
+ * vaciaba la sala de espera de sentido: quien lo pulsaba empezaba solo, con lo
+ * que la competencia dejaba de medir a todos bajo las mismas condiciones. Ahora
+ * la emergencia sigue cubierta —si no hay red no hay salida que esperar y el
+ * botón está desde el principio—, pero con la sala funcionando manda el
+ * profesor.
  */
 export class LobbyScreen {
   private readonly root: HTMLElement;
@@ -40,6 +45,17 @@ export class LobbyScreen {
 
   private myName = '';
   private busy = false;
+
+  /**
+   * Último estado conocido de la sala.
+   *
+   * La sala cambia (entra gente, se da la salida) en momentos distintos de
+   * cuando esta pantalla se muestra. Guardarlo permite pintar el estado real
+   * en cuanto el alumno termina de identificarse, en vez de esperar al
+   * siguiente cambio.
+   */
+  private lastSnapshot: LobbySnapshot = { state: 'lobby', startedAt: null, participants: [] };
+  private lastOnline = false;
 
   constructor(private readonly handlers: LobbyHandlers) {
     this.root = requireElement('lobby-screen');
@@ -108,28 +124,56 @@ export class LobbyScreen {
     this.nameLabel.textContent = check.value;
     this.joinStep.hidden = true;
     this.waitStep.hidden = false;
+    // Se repinta con lo último conocido: si la salida ya estaba dada (alguien
+    // que llega tarde), tiene que ver el botón de empezar inmediatamente.
+    this.render(this.lastSnapshot, this.lastOnline);
+  }
+
+  /**
+   * Devuelve al alumno al paso de identificarse, con un aviso.
+   *
+   * Lo usa el juego cuando el profesor lo saca de la sala: sin esto, el alumno
+   * se quedaría mirando una sala de espera en la que ya no está, sin entender
+   * por qué su nombre desapareció de la lista.
+   */
+  kickedOut(): void {
+    this.waitStep.hidden = true;
+    this.joinStep.hidden = false;
+    this.setError('El profesor te ha sacado de la sala. Vuelve a entrar con tu nombre real.');
+    this.myName = '';
   }
 
   private setError(message: string): void {
     this.error.textContent = message;
   }
 
-  /** Refresca la lista de participantes con lo que llega de la sala. */
+  /** Refresca la lista de participantes y el estado con lo que llega de la sala. */
   render(snapshot: LobbySnapshot, online: boolean): void {
+    this.lastSnapshot = snapshot;
+    this.lastOnline = online;
+
     if (!online) {
+      // Sin sala compartida no hay salida que esperar: se puede empezar ya.
       this.status.textContent = 'Sin conexión con la sala: puedes jugar por tu cuenta.';
       this.roster.replaceChildren();
       this.soloButton.textContent = 'Empezar';
+      this.soloButton.hidden = false;
       return;
     }
 
     const ready = snapshot.participants.filter((p) => p.ready).length;
     const total = snapshot.participants.length;
+    const started = snapshot.state === 'running';
 
-    this.status.textContent =
-      snapshot.state === 'running'
-        ? '¡Salida dada! Empezando…'
-        : `Esperando la salida del profesor · ${ready} de ${total} listos`;
+    // El botón de empezar es la señal de salida hecha visible. Aparece de golpe
+    // y en grande cuando el profesor la da, y hasta entonces no existe.
+    this.soloButton.hidden = !started;
+    this.soloButton.textContent = '¡ADELANTE! EMPEZAR';
+    this.soloButton.classList.toggle('btn-go', started);
+
+    this.status.textContent = started
+      ? '¡El profesor ha dado la salida! Pulsa para empezar.'
+      : `Esperando la salida del profesor · ${ready} de ${total} en la sala`;
 
     this.roster.replaceChildren(
       ...[...snapshot.participants]

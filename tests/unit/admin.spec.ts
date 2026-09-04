@@ -79,6 +79,19 @@ describe('Cifras del panel del profesor', () => {
     expect(stats.rows[0]?.idle).toBe(true);
   });
 
+  it('cada fila lleva el identificador con el que se expulsa', () => {
+    // El panel ordena por clasificación, no por orden de entrada, así que el
+    // identificador tiene que viajar con la fila: sin él, el profesor pulsaría
+    // la cruz de una fila y sacaría de la sala a otra persona.
+    const stats = computeRoomStats(
+      room([participant('Ana Perez', 1, 100), participant('Luis Soto', 3, 400, 5_000)]),
+    );
+
+    expect(stats.rows[0]?.name).toBe('Luis Soto');
+    expect(stats.rows[0]?.id).toBe('Luis Soto');
+    expect(stats.rows[1]?.id).toBe('Ana Perez');
+  });
+
   it('cuenta el avance del grupo, no solo el del primero', () => {
     const stats = computeRoomStats(
       room([

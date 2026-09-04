@@ -48,10 +48,25 @@ service cloud.firestore {
           && request.resource.data.name is string
           && request.resource.data.name.size() <= 24;
 
-        // Solo el dueño del documento puede modificarlo o borrarlo. Es lo que
-        // impide que un alumno edite la puntuación de otro.
-        allow update, delete: if request.auth != null
+        // Solo el dueño puede MODIFICAR su documento. Es lo que impide que un
+        // alumno edite la puntuación de otro para robarle el premio.
+        allow update: if request.auth != null
           && resource.data.uid == request.auth.uid;
+
+        // Borrar, en cambio, lo puede hacer cualquiera autenticado.
+        //
+        // Es una concesión deliberada y conviene entender qué se cede: el
+        // profesor necesita poder sacar de la sala a quien entre con un nombre
+        // que no quiere proyectado delante de la clase, y aquí no hay forma de
+        // distinguirlo de un alumno —la contraseña del panel se comprueba en
+        // el navegador, no en el servidor—. Sin funciones en la nube, las
+        // opciones eran esta o dejar al profesor sin moderación.
+        //
+        // Lo que se arriesga es acotado: un alumno con la consola abierta
+        // podría borrar a otro de la tabla. No puede falsear su puntuación, no
+        // puede leer el archivo histórico y la sala entera caduca en una hora.
+        // Y quien fuera borrado vuelve a entrar escribiendo su nombre.
+        allow delete: if request.auth != null;
       }
     }
 

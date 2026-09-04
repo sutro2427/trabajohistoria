@@ -62,6 +62,17 @@ export interface ICompetition {
   /** Da la salida a todos. Solo el profesor. */
   startCompetition(): Promise<void>;
 
+  /**
+   * Saca a un participante de la sala. Solo el profesor.
+   *
+   * Existe por un motivo muy concreto de aula: por muchos filtros que tenga la
+   * validación de nombres, siempre habrá quien entre como algo que el profesor
+   * no quiere proyectado delante de la clase. Tener que reiniciar la sala
+   * entera —y con ella el progreso de los treinta— por un solo nombre sería
+   * desproporcionado.
+   */
+  removeParticipant(id: string): Promise<void>;
+
   /** Reinicia la sala para otra tanda. Solo el profesor. */
   resetCompetition(): Promise<void>;
 

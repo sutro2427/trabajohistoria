@@ -115,16 +115,23 @@
               </button>
             </div>
 
+            <!-- Agrandar es lo que va a hacer TODO el mundo nada más entrar, así
+                 que va junto al botón de jugar y no escondido en un pie de
+                 página. Se muestra siempre, incluso donde el navegador no tiene
+                 API de pantalla completa: ahí, en vez de no hacer nada, explica
+                 el gesto que sí funciona. -->
+            <button type="button" class="btn btn-expand" id="home-fullscreen" data-testid="btn-home-fullscreen">
+              <span class="glyph-expand" aria-hidden="true"></span>
+              <span id="home-fullscreen-label">Agrandar pantalla</span>
+            </button>
+
+            <div class="home-install" id="home-install" data-testid="home-install" hidden></div>
+
             <div class="home-links">
-              <button type="button" class="btn btn-ghost" id="home-fullscreen" data-testid="btn-home-fullscreen">
-                ⛶ Pantalla completa
-              </button>
               <button type="button" class="btn btn-ghost" id="home-admin" data-testid="btn-home-admin">
                 Panel del profesor
               </button>
             </div>
-
-            <p class="home-install" id="home-install" data-testid="home-install" hidden></p>
           </div>
         </div>
 
@@ -163,8 +170,10 @@
                 Esperando a que el profesor dé la salida…
               </p>
               <ul class="roster" id="roster" data-testid="roster"></ul>
-              <button type="button" class="btn btn-primary" id="btn-solo" data-testid="btn-solo">
-                Jugar ahora
+              <!-- La señal de salida hecha visible: no existe hasta que el
+                   profesor la da (ver LobbyScreen). -->
+              <button type="button" class="btn btn-primary" id="btn-solo" data-testid="btn-solo" hidden>
+                ¡ADELANTE! EMPEZAR
               </button>
             </div>
           </div>
@@ -313,9 +322,33 @@
           <ol class="admin-rows" id="admin-rows" data-testid="admin-rows"></ol>
 
           <footer class="admin-foot">
+            <div class="admin-room-form">
+              <label class="field-label" for="admin-room-input">Sala (un paralelo por sala)</label>
+              <div class="admin-room-row">
+                <input
+                  type="text"
+                  id="admin-room-input"
+                  data-testid="admin-room-input"
+                  class="field-input"
+                  placeholder="4a"
+                  maxlength="32"
+                  autocapitalize="off"
+                  spellcheck="false"
+                />
+                <button type="button" class="btn" id="admin-room-open" data-testid="btn-admin-room-open">
+                  Abrir sala
+                </button>
+              </div>
+            </div>
+
             <p class="admin-share">
-              Enlace para la clase: <code id="admin-link" data-testid="admin-link"></code>
+              Enlace para la clase:
+              <code id="admin-link" data-testid="admin-link"></code>
+              <button type="button" class="btn btn-ghost" id="admin-copy" data-testid="btn-admin-copy">
+                Copiar
+              </button>
             </p>
+
             <div class="admin-controls">
               <button type="button" class="btn btn-primary" id="admin-start" data-testid="btn-admin-start">
                 Dar la salida

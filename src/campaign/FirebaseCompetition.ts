@@ -259,6 +259,21 @@ export class FirebaseCompetition implements ICompetition {
     );
   }
 
+  /**
+   * Saca a un participante borrando su documento.
+   *
+   * No se marca como expulsado ni se guarda una lista negra: el alumno puede
+   * volver a entrar con un nombre correcto, que es justo lo que se quiere. Lo
+   * que se corrige es el nombre proyectado, no la persona.
+   */
+  async removeParticipant(id: string): Promise<void> {
+    try {
+      await deleteDoc(doc(this.playersRef(), id));
+    } catch {
+      // Sin permisos o sin red: la sala sigue funcionando.
+    }
+  }
+
   async resetCompetition(): Promise<void> {
     const now = Date.now();
     // Se borran los participantes uno a uno: Firestore no elimina

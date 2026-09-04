@@ -44,6 +44,7 @@ export class HomeScreen {
   private readonly continueButton: HTMLButtonElement;
   private readonly newButton: HTMLButtonElement;
   private readonly fullscreenButton: HTMLButtonElement;
+  private readonly fullscreenLabel: HTMLElement;
   private readonly adminButton: HTMLButtonElement;
   private readonly install: HTMLElement;
 
@@ -55,6 +56,7 @@ export class HomeScreen {
     this.continueButton = requireElement('home-continue') as HTMLButtonElement;
     this.newButton = requireElement('home-new') as HTMLButtonElement;
     this.fullscreenButton = requireElement('home-fullscreen') as HTMLButtonElement;
+    this.fullscreenLabel = requireElement('home-fullscreen-label');
     this.adminButton = requireElement('home-admin') as HTMLButtonElement;
     this.install = requireElement('home-install');
 
@@ -75,12 +77,33 @@ export class HomeScreen {
       this.handlers.onNewPlayer();
     });
 
-    this.fullscreenButton.addEventListener('click', () => void toggleFullscreen());
+    this.fullscreenButton.addEventListener('click', () => this.expand());
     this.adminButton.addEventListener('click', () => this.handlers.onAdmin());
+  }
 
-    // Donde no hay API de pantalla completa el botón no puede hacer nada; se
-    // retira y la indicación de abajo ocupa su función.
-    this.fullscreenButton.hidden = !fullscreenSupported();
+  /**
+   * Agranda la pantalla, o enseña cómo hacerlo donde el navegador no deja.
+   *
+   * El botón **nunca se oculta**, ni siquiera en iPhone, donde no existe la
+   * API. Ocultarlo era lo que había antes y era peor: quien más lo necesitaba
+   * era justo quien no lo veía, y no tenía forma de enterarse de que la vía
+   * era instalar la página. Un botón que explica qué hacer sirve; uno ausente
+   * no sirve para nada.
+   */
+  private expand(): void {
+    if (fullscreenSupported()) {
+      void toggleFullscreen();
+      return;
+    }
+    // Sin API el botón despliega las instrucciones y las subraya. En una
+    // pantalla baja el cartel viene plegado y esto es lo que lo abre; en una
+    // alta ya está a la vista y el parpadeo señala dónde mirar.
+    this.install.classList.add('is-open');
+    this.install.classList.remove('is-calling');
+    // Reiniciar la animación exige un reflujo entre quitar y poner la clase.
+    void this.install.offsetWidth;
+    this.install.classList.add('is-calling');
+    this.install.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
   /** Muestra la portada, con o sin campaña que retomar. */
@@ -104,11 +127,50 @@ export class HomeScreen {
       this.playButton.textContent = 'JUGAR';
     }
 
-    const hint = installHint();
-    this.install.textContent = hint;
-    this.install.hidden = hint === '';
-
+    this.paintInstallHint();
     this.root.hidden = false;
+  }
+
+  /**
+   * Pinta el cartel de "cómo agrandar", o lo retira si no hace falta.
+   *
+   * Es un cartel y no una línea de texto pequeño a propósito: agrandar es lo
+   * primero que va a hacer todo el mundo, y en una clase de treinta personas
+   * no puede depender de que alguien encuentre una nota al pie.
+   */
+  private paintInstallHint(): void {
+    const hint = installHint();
+
+    if (!hint) {
+      this.install.hidden = true;
+      this.fullscreenLabel.textContent = 'Agrandar pantalla';
+      return;
+    }
+
+    // Donde el botón no puede actuar, dice lo que sí va a hacer: enseñar cómo.
+    this.fullscreenLabel.textContent = fullscreenSupported()
+      ? 'Agrandar pantalla'
+      : 'Cómo agrandar la pantalla';
+
+    const title = document.createElement('b');
+    title.className = 'install-title';
+    title.textContent = hint.title;
+
+    const steps = document.createElement('ol');
+    steps.className = 'install-steps';
+    for (const step of hint.steps) {
+      const li = document.createElement('li');
+      li.textContent = step;
+      steps.append(li);
+    }
+
+    const reward = document.createElement('span');
+    reward.className = 'install-reward';
+    reward.textContent = hint.reward;
+
+    this.install.replaceChildren(title, steps, reward);
+    this.install.classList.remove('is-open', 'is-calling');
+    this.install.hidden = false;
   }
 
   hide(): void {

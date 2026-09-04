@@ -94,6 +94,13 @@ export class Game {
   /** Evita arrancar dos veces si la salida llega mientras ya se está jugando. */
   private started = false;
   /**
+   * `true` en cuanto este alumno aparece en la lista de la sala.
+   *
+   * Es lo que distingue "todavía no ha llegado mi entrada" de "el profesor me
+   * ha sacado": los dos casos se ven igual en la instantánea.
+   */
+  private seenInRoom = false;
+  /**
    * `true` con el menú de pausa abierto.
    *
    * Es distinto de `interactive`: ese también está en `false` durante los
@@ -163,6 +170,7 @@ export class Game {
         {
           onStart: () => void this.competition.startCompetition(),
           onReset: () => void this.competition.resetCompetition(),
+          onRemove: (id) => void this.competition.removeParticipant(id),
         },
         options.roomId ?? 'clase',
         this.competition.online,
@@ -335,19 +343,47 @@ export class Game {
   /** Reacciona a los cambios de la sala: entradas, salidas y la señal de inicio. */
   private onLobbyChange(snapshot: LobbySnapshot): void {
     this.snapshot = snapshot;
-    if (this.lobby.visible) this.lobby.render(snapshot, this.competition.online);
+    this.lobby.render(snapshot, this.competition.online);
+    this.checkIfRemoved(snapshot);
     // El panel se refresca SIEMPRE, no solo si está abierto: pintar unas
     // pocas filas de DOM es gratis, y así al pulsar el botón ya está al día.
     // Condicionarlo a que fuera visible dejaba el panel vacío la primera vez.
     this.board.render(snapshot, this.competition.online);
     this.admin?.render(snapshot);
 
-    // La salida la da el profesor y arranca a todos a la vez. En la pantalla
-    // proyectada no: ahí no hay nadie jugando, y arrancar una partida detrás
-    // del panel solo serviría para gastar batería del portátil del aula.
-    if (snapshot.state === 'running' && !this.started && this.run !== null && !this.admin) {
-      this.beginCampaign();
+    // La salida del profesor NO arranca la partida sola: hace aparecer el botón
+    // de empezar en la sala de espera (ver `LobbyScreen.render`). Es la
+    // diferencia entre que a alguien le arranque la campaña mientras mira otra
+    // cosa y que empiece cuando tiene el teléfono en la mano.
+  }
+
+  /**
+   * Detecta que el profesor ha sacado a este alumno de la sala.
+   *
+   * Se comprueba por nombre y solo mientras espera: una vez jugando, una caída
+   * momentánea de red que vaciara la lista no debe echarle de su propia
+   * partida.
+   */
+  private checkIfRemoved(snapshot: LobbySnapshot): void {
+    if (!this.competition.online || this.started || this.run === null) return;
+    if (!this.lobby.visible) return;
+
+    const stillIn = snapshot.participants.some((p) => p.name === this.run?.playerName);
+    if (stillIn) {
+      this.seenInRoom = true;
+      return;
     }
+
+    // Solo se considera expulsión si antes SE LE VIO en la sala. Entre que se
+    // envía la entrada y llega el cambio de vuelta hay un instante en el que
+    // el alumno todavía no figura, y sin esta condición se echaría a sí mismo
+    // nada más entrar.
+    if (!this.seenInRoom) return;
+
+    this.seenInRoom = false;
+    this.run = null;
+    this.saveRun(null);
+    this.lobby.kickedOut();
   }
 
   /** Empieza la campaña por el nivel 1. */

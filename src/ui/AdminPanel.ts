@@ -36,6 +36,8 @@ import { requireElement } from './Hud.js';
 export interface AdminPanelHandlers {
   readonly onStart: () => void;
   readonly onReset: () => void;
+  /** Saca a un participante de la sala. */
+  readonly onRemove: (id: string, name: string) => void;
 }
 
 export class AdminPanel {
@@ -52,6 +54,8 @@ export class AdminPanel {
   private readonly rows: HTMLElement;
   private readonly link: HTMLElement;
   private readonly roomLabel: HTMLElement;
+  private readonly roomInput: HTMLInputElement;
+  private readonly copyButton: HTMLButtonElement;
 
   private snapshot: LobbySnapshot = { state: 'lobby', startedAt: null, participants: [] };
   private ticker: number | null = null;
@@ -74,6 +78,8 @@ export class AdminPanel {
     this.rows = requireElement('admin-rows');
     this.link = requireElement('admin-link');
     this.roomLabel = requireElement('admin-room');
+    this.roomInput = requireElement('admin-room-input') as HTMLInputElement;
+    this.copyButton = requireElement('admin-copy') as HTMLButtonElement;
 
     this.gateForm.addEventListener('submit', (event) => {
       event.preventDefault();
@@ -95,6 +101,48 @@ export class AdminPanel {
       // Se vuelve al juego como un alumno más, sin el parámetro del panel.
       window.location.href = studentLink();
     });
+
+    // Abrir otra sala es cambiar un parámetro de la dirección y recargar. Cada
+    // paralelo tiene la suya, con su propia tabla y su propia salida.
+    (requireElement('admin-room-open') as HTMLButtonElement).addEventListener('click', () =>
+      this.openRoom(),
+    );
+    this.roomInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') this.openRoom();
+    });
+
+    this.copyButton.addEventListener('click', () => void this.copyLink());
+  }
+
+  /** Abre la sala escrita en el campo, recargando el panel sobre ella. */
+  private openRoom(): void {
+    // Se sanea igual que en `readRoomId`: lo escrito va directo a una ruta de
+    // Firestore, y un espacio o un acento la romperían.
+    const clean = this.roomInput.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32);
+    if (clean === '' || clean === this.roomId) return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('sala', clean);
+    window.location.href = url.toString();
+  }
+
+  /**
+   * Copia el enlace de la clase al portapapeles.
+   *
+   * El botón confirma en su propio texto y no con un aviso aparte: el panel
+   * está proyectado, y una ventana emergente delante de la clase es ruido.
+   */
+  private async copyLink(): Promise<void> {
+    const original = 'Copiar';
+    try {
+      await navigator.clipboard.writeText(studentLink());
+      this.copyButton.textContent = '¡Copiado!';
+    } catch {
+      // Sin permiso de portapapeles (o sin HTTPS): el enlace está a la vista
+      // y se puede seleccionar a mano, así que no es un error que reportar.
+      this.copyButton.textContent = 'Cópialo a mano';
+    }
+    window.setTimeout(() => (this.copyButton.textContent = original), 2000);
   }
 
   /**
@@ -145,6 +193,7 @@ export class AdminPanel {
     this.gate.hidden = true;
     this.panel.hidden = false;
     this.roomLabel.textContent = this.roomId;
+    this.roomInput.value = this.roomId;
     this.link.textContent = studentLink();
     this.paint();
 
@@ -267,7 +316,27 @@ export class AdminPanel {
         defeats.className = 'admin-defeats';
         defeats.textContent = row.defeats > 0 ? `${row.defeats} ✖` : '';
 
-        li.append(position, name, pips, time, defeats);
+        // Expulsar: la moderación que el profesor necesita cuando alguien
+        // entra con un nombre que no quiere proyectado. Se confirma nombrando
+        // a quién se saca, porque en una lista de treinta filas y con el panel
+        // en una pantalla grande es fácil pulsar el de al lado.
+        const kick = document.createElement('button');
+        kick.type = 'button';
+        kick.className = 'admin-kick';
+        kick.textContent = '✕';
+        kick.title = `Sacar a ${row.name} de la sala`;
+        kick.setAttribute('aria-label', kick.title);
+        kick.dataset['testid'] = 'btn-admin-kick';
+        if (row.id === null) {
+          kick.disabled = true;
+        } else {
+          const { id, name: who } = row;
+          kick.addEventListener('click', () => {
+            if (confirm(`¿Sacar a "${who}" de la sala?`)) this.handlers.onRemove(id, who);
+          });
+        }
+
+        li.append(position, name, pips, time, defeats, kick);
         return li;
       }),
     );
